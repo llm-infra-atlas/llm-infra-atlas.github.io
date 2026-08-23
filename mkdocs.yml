@@ -1,0 +1,331 @@
+site_name: LLM Infra Atlas
+site_description: LLM Infra 深度笔记：从算法定义到生产系统与源码实现
+site_url: https://llm-infra-atlas.github.io/
+repo_url: https://github.com/llm-infra-atlas/llm-infra-atlas.github.io
+repo_name: llm-infra-atlas/llm-infra-atlas.github.io
+edit_uri: edit/main/docs/
+
+nav:
+  - 首页: index.md
+  - 模型与算子:
+      - 前沿开源模型架构速览: frontier_open_models.md
+      - Attention:
+          - attention/README.md
+          - 基础：Q/K/V、softmax 与 KV cache: attention/00_attention_basics.md
+          - Attention 机制:
+              - attention/mechanisms/README.md
+              - 基础：MHA / MQA / GQA / MLA: attention/mechanisms/01_basics_head_sharing.md
+              - 位置编码与数值稳定: attention/mechanisms/02_position_and_stability.md
+              - sparse 路线（一）：静态稀疏与推理期动态稀疏: attention/mechanisms/03_sparse_static.md
+              - sparse 路线（二）：可训练稀疏: attention/mechanisms/04_sparse_trainable.md
+              - sparse 路线（三）：DSA / CSA / HCA: attention/mechanisms/05_sparse_dsa_frontier.md
+              - linear 路线（一）：三种计算形式: attention/mechanisms/06_linear_foundation.md
+              - linear 路线（二）：衰减机制: attention/mechanisms/07_linear_decay_gating.md
+              - linear 路线（三）：delta rule / DPLR: attention/mechanisms/08_linear_delta_rule.md
+              - linear 路线（四）：KDA 与 Kimi Linear: attention/mechanisms/09_linear_kda_kimi.md
+              - gated attention: attention/mechanisms/10_gating.md
+              - hybrid：层比例与 NoPE: attention/mechanisms/11_hybrid.md
+          - FlashAttention:
+              - attention/fa/README.md
+              - IO-awareness 与 online softmax: attention/fa/01_io_awareness_online_softmax.md
+              - FA2：并行度与 work partitioning: attention/fa/02_fa2_parallelism.md
+              - FA3：Hopper 上的异步化与 overlap: attention/fa/03_fa3_hopper_async.md
+              - FA4（CuTeDSL）与工程接口: attention/fa/04_fa4_cutedsl_and_api.md
+              - Flash sparse attention: attention/fa/05_flash_sparse_attention.md
+              - Flash linear attention: attention/fa/06_flash_linear_attention.md
+      - MoE:
+          - moe/README.md
+          - MoE 基础与关键组件: moe/01_basics_and_components.md
+          - 细粒度 MoE: moe/02_fine_grained.md
+          - LatentMoE: moe/03_latentmoe.md
+          - 训练中的负载均衡调控: moe/04_load_balancing.md
+          - Grouped GEMM: moe/05_grouped_gemm.md
+          - DeepEP: moe/06_deepep.md
+          - MegaMoE: moe/07_megamoe.md
+      - 多模态:
+          - multimodal/README.md
+          - 术语定义: multimodal/00_definitions.md
+          - 对比预训练: multimodal/01_contrastive_pretrain.md
+          - Encoder: multimodal/02_encoders.md
+          - 经典 VLM: multimodal/03_classic_vlms.md
+          - 融合与 connector: multimodal/04_fusion_and_connectors.md
+          - 生成器: multimodal/05_generation.md
+          - 异构与 stage 解耦: multimodal/06_heterogeneity_and_disaggregation.md
+          - 变长输入与负载均衡: multimodal/07_variable_length_load_balancing.md
+          - 冗余、显存与缓存: multimodal/08_caching_redundancy_memory.md
+      - Residual:
+          - residual/README.md
+          - Identity skip 与 Norm 放置: residual/00_identity_skip_and_norm.md
+          - Hyper-Connections / mHC: residual/01_hyper_connections.md
+          - Attention residuals: residual/02_attention_residual.md
+      - Speculative Decoding:
+          - speculative_decoding/README.md
+          - Decode 瓶颈: speculative_decoding/00_decode_bottleneck.md
+          - Draft-then-verify: speculative_decoding/01_draft_verify.md
+          - Tree attention: speculative_decoding/02_tree_attention.md
+          - 早期 draft 方法: speculative_decoding/03_draft_families.md
+          - Multi-token prediction: speculative_decoding/04_mtp.md
+          - EAGLE: speculative_decoding/05_eagle.md
+          - DFlash / DSpark: speculative_decoding/06_dflash_dspark.md
+          - Speculative serving: speculative_decoding/07_serving.md
+  - 训推系统:
+      - 并行策略:
+          - parallel/README.md
+          - DP:
+              - parallel/01_dp/README.md
+              - Megatron DDP: parallel/01_dp/01_ddp_and_overlap.md
+              - ZeRO: parallel/01_dp/02_zero_and_distributed_optimizer.md
+              - FSDP: parallel/01_dp/03_fsdp.md
+          - TP / SP:
+              - parallel/02_tp_sp/README.md
+              - Linear layers: parallel/02_tp_sp/01_linear_layers.md
+              - Transformer block: parallel/02_tp_sp/02_transformer_block.md
+              - Sequence parallel: parallel/02_tp_sp/03_sequence_parallel.md
+              - Overlap / tuning: parallel/02_tp_sp/04_overlap_and_optimizations.md
+          - PP:
+              - parallel/03_pp/README.md
+              - GPipe / 1F1B: parallel/03_pp/01_gpipe_1f1b.md
+              - Zero bubble / DualPipe: parallel/03_pp/02_interleaved_zerobubble_dualpipe.md
+              - PP memory / overlap: parallel/03_pp/03_overlap_and_memory.md
+          - CP:
+              - parallel/04_cp/README.md
+              - Ring attention: parallel/04_cp/01_ring_attention.md
+              - Ulysses A2A: parallel/04_cp/02_ulysses_a2a.md
+              - Dynamic CP: parallel/04_cp/03_dynamic_cp.md
+              - Megatron-LM CP 实现: parallel/04_cp/04_megatron_cp_integration.md
+          - EP:
+              - parallel/05_ep/README.md
+              - Router / preprocess: parallel/05_ep/01_router_and_preprocess.md
+              - Dispatch: parallel/05_ep/02_dispatch.md
+              - Combine / backward: parallel/05_ep/03_combine_and_backward.md
+              - 系统侧负载均衡优化: parallel/05_ep/04_system_load_balancing.md
+      - 训练系统:
+          - train/README.md
+          - Training overview: train/00_overview.md
+          - Training loop: train/01_training_loop.md
+          - Optimizer: train/02_optimizer.md
+          - Checkpoint: train/03_checkpoint.md
+          - Dataloader: train/04_dataloader.md
+          - Grad / param buffer: train/05_grad_param_buffer.md
+          - Activation saving: train/06_activation_recompute_offload.md
+          - Memory model: train/07_memory_model.md
+          - Other components: train/08_other_components.md
+      - 推理服务:
+          - serving/README.md
+          - Inference / metrics: serving/01_inference_and_metrics.md
+          - Batching / chunked prefill: serving/02_batching_and_chunked_prefill.md
+          - PagedAttention / KV cache: serving/03_paged_attention_and_kv_cache.md
+          - Prefix / hierarchical cache: serving/04_prefix_and_hierarchical_cache.md
+          - PD 分离 / KV transfer: serving/05_disaggregation_and_kv_transfer.md
+          - Scheduling / overlap: serving/06_scheduling_parallelism_and_overlap.md
+          - Multimodal serving: serving/07_multimodal_serving.md
+          - Benchmark / production: serving/08_benchmarking_and_production.md
+      - 后训练:
+          - post_train/README.md
+          - Algorithm:
+              - post_train/algorithms/README.md
+              - CPT / SFT / preference: post_train/algorithms/01_cpt_sft_preference.md
+              - PPO: post_train/algorithms/02_ppo.md
+              - GRPO family: post_train/algorithms/03_grpo_family.md
+              - On-policy distillation (OPD): post_train/algorithms/04_opd.md
+          - System:
+              - post_train/infra/README.md
+              - Framework mapping: post_train/infra/01_framework_mapping.md
+              - Rollout-train flow: post_train/infra/02_rollout_train_architecture.md
+              - Async / partial rollout: post_train/infra/03_async_partial_rollout.md
+              - Consistency / determinism: post_train/infra/04_consistency_determinism.md
+              - Weight conversion: post_train/infra/05_weight_sync.md
+              - Agentic RL: post_train/infra/06_agentic_rl.md
+      - 低精度:
+          - low_precision/README.md
+          - Formats / scaling: low_precision/00_formats_and_scaling.md
+          - DeepSeek FP8: low_precision/01_deepseek_fp8_hopper.md
+          - Blackwell FP4/FP8: low_precision/02_blackwell_mxfp_nvfp4.md
+      - Agent:
+          - agent/README.md
+          - Definitions: agent/00_definitions.md
+          - Loop / tools: agent/01_loop_and_tool_use.md
+          - Classic works: agent/02_classic_works.md
+          - DeepSeek Harness: agent/03_deepseek_harness.md
+          - Sandbox / AgentENV: agent/04_sandbox_and_agentenv.md
+  - 底层技术:
+      - HPC · 集群与网络:
+          - hpc/README.md
+          - GPU hardware: hpc/00_gpu_hw_params.md
+          - Roofline model: hpc/00_roofline_model.md
+          - Scale-up / 超节点: hpc/01_scale_up_nvlink_nvl72.md
+          - Scale-out topology: hpc/02_scale_out_topology_planes.md
+          - RDMA / IB verbs: hpc/03_rdma_ib_verbs.md
+          - Collectives: hpc/04_collectives.md
+          - Reliability: hpc/05_reliability_at_scale.md
+      - PyTorch:
+          - torch/README.md
+          - Tensor / memory layout: torch/01_tensor_memory_layout.md
+          - Compute ops: torch/02_compute_ops.md
+          - Autograd: torch/03_autograd.md
+          - Distributed: torch/04_distributed.md
+          - CUDA streams / AMP: torch/05_cuda_streams_memory_amp.md
+          - Caching allocator: torch/06_caching_allocator.md
+          - CUDA Graph: torch/07_cuda_graph.md
+          - Compile / profiler: torch/08_compile_profiler.md
+      - Profiling:
+          - profiling/README.md
+          - Timeline tracing: profiling/01_timeline_tracing.md
+          - Memory profiling: profiling/02_memory_profiling.md
+          - Nsight Compute: profiling/03_nsight_compute.md
+      - CUDA & DSL:
+          - cuda_dsl/README.md
+
+theme:
+  name: material
+  language: zh
+  logo: assets/images/favicon-512.webp
+  favicon: assets/images/favicon.ico
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.indexes
+    - navigation.sections
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+hooks:
+  - hooks/root_assets.py
+  - hooks/source_links.py
+  - hooks/homepage_links.py
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path:
+        - .
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_javascript:
+  - assets/javascripts/mathjax.js
+  # 自托管的 MathJax 3.2.2（含 CHTML 字体，见 assets/javascripts/mathjax/），不依赖 CDN
+  - assets/javascripts/mathjax/tex-mml-chtml.js
+
+extra_css:
+  - assets/stylesheets/custom.css
+  - assets/stylesheets/navigation.css
+
+exclude_docs: |
+  **/_build_nb.py
+  **/*.ipynb
+  **/src/**
+
+strict: true
+
+# 文档用 [[project:path#Lx-Ly]] 引用源码；hook 根据这里生成固定 commit 的
+# GitHub permalink。references/ 仅用于本地核对，不参与构建，也不是公开 URL。
+extra:
+  source_repositories:
+    agentenv:
+      url: https://github.com/kvcache-ai/AgentENV
+      commit: 547c1a8a515382cfc2ba02cb8aeb1bd134b7327f
+    checkpoint-engine:
+      url: https://github.com/MoonshotAI/checkpoint-engine
+      commit: d1de07b3aacff34050d09c3efa093f9a2fcdcf73
+    deepep:
+      url: https://github.com/deepseek-ai/DeepEP
+      commit: d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb
+    deepgemm:
+      url: https://github.com/deepseek-ai/DeepGEMM
+      commit: 88965b078186ee7510ab9fc4f1d5ebc19adfa8d1
+    deepseek-harness:
+      url: https://github.com/deepseek-ai/deepseek-harness
+      commit: 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
+    fla:
+      url: https://github.com/fla-org/flash-linear-attention
+      commit: 81091cc6d71695e5a23e739f03bbd2fc627b72d4
+    flash-attention:
+      url: https://github.com/Dao-AILab/flash-attention
+      commit: fb02fc8b56413e647b7060418b537858d6175d89
+    lmcache:
+      url: https://github.com/LMCache/LMCache
+      commit: 09bc14c0a5fd6eec9afc3634f8f726f5249febf7
+    megatron-lm:
+      url: https://github.com/NVIDIA/Megatron-LM
+      commit: e03878b5ffc2698ed1d63fc2ec434cb2b5f122e2
+    mooncake:
+      url: https://github.com/kvcache-ai/Mooncake
+      commit: f90ae691f109e49a60920e0c8abbf7e572826d8c
+    sglang:
+      url: https://github.com/sgl-project/sglang
+      commit: 1a5775a9df3069574109a22d00d167269fe9c0ff
+    slime:
+      url: https://github.com/THUDM/slime
+      commit: 41014d1f29e201137fdffce737bb8bac65bc5219
+    vllm:
+      url: https://github.com/vllm-project/vllm
+      commit: 156b12667cf5fbb93914f3646acc25dca378b420
+    atlas:
+      url: https://github.com/llm-infra-atlas/llm-infra-atlas.github.io
+      commit: main
+    pytorch:
+      url: https://github.com/pytorch/pytorch
+      commit: v2.8.0
+    eplb:
+      url: https://github.com/deepseek-ai/EPLB
+      commit: d52c72d5b2f2fb4c41afbf8eb21366820239913d
+    lplb:
+      url: https://github.com/deepseek-ai/LPLB
+      commit: 0490f794
+    ultraep:
+      url: https://github.com/Dots-Infra/UltraEP
+      commit: 94cab099b44fffa99a82fea99e7c12d89cf65e4f
+    moonep:
+      url: https://github.com/MoonshotAI/MoonEP
+      commit: 2bd860b4dd083df62b79d5e916fca71ec5742228

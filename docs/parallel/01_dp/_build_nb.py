@@ -1,0 +1,193 @@
+import json, sys
+
+cells = []
+def md(s):  cells.append({"cell_type":"markdown","metadata":{},"source":s.splitlines(keepends=True)})
+def code(s):cells.append({"cell_type":"code","metadata":{},"execution_count":None,"outputs":[],"source":s.strip("\n").splitlines(keepends=True)})
+
+md(r"""# Lab · 手写 DDP / ZeRO-1 / ZeRO-3(FSDP)
+
+本 notebook 用**纯 PyTorch** 把 [`docs/parallel/dp`](./README.md) 的三档数据并行亲手实现一遍，用**真实 `torch.distributed`**（gloo、本地多进程）跑通 all-reduce / reduce-scatter / all-gather，并**训练若干步**后逐元素对齐单进程 reference。Mac CPU 几秒跑完。
+
+三种实现一一对应正文：
+
+| 实现 | 切什么 | 通信/步 | 正文 |
+|---|---|---|---|
+| **DDP** (`no_shard`) | 无 | all-reduce(grad) = 2P | [`01`](./01_ddp_and_overlap.md) |
+| **ZeRO-1** (distributed optimizer) | optimizer state + master | RS(grad)+AG(param) = 2P | [`02`](./02_zero_and_distributed_optimizer.md) |
+| **ZeRO-3 / FSDP** | + 参数本身 | RS(grad)+2×AG(param) = 3P | [`03`](./03_fsdp.md) |
+
+简化：用一个两层 MLP 的 **flat 参数向量**（便于按 DP 切片）、SGD+momentum（momentum buffer 演示 optimizer-state 分片）、fp32 全程；不做 overlap/prefetch。但**关键点一个不少**：梯度 all-reduce vs reduce-scatter、参数 all-gather、optimizer state 只存 `1/N`、FSDP 的「unshard→算→reduce-scatter 梯度」、以及 `AllGather.backward == reduce-scatter`。
+
+**运行方式**：从上到下执行；worker 写入 `dp_worker.py` 后由 `mp.spawn` 起 `WORLD` 个进程。
+""")
+
+md(r"""## Part 0 · 全局配置、模型与「全局问题」
+
+DP 把 **batch** 切到多卡，各卡持有（部分或全部）相同的参数。我们用 flat 参数向量表示一个两层 MLP，方便按 DP rank 切片（这正是 Megatron `_ParamAndGradBuffer` 把所有参数拼成连续 buffer 再切的简化版）。
+""")
+code(r"""
+import torch
+WORLD, H, Fh, B = 2, 4, 8, 3       # DP size / 输入维 / 隐藏维 / 每 rank batch
+STEPS, LR, MOM = 4, 0.1, 0.9
+SIZES = [Fh*H, Fh, H*Fh, H]; P = sum(SIZES)     # flat 参数: W1,b1,W2,b2
+PAD = (-P) % WORLD; PADDED = P + PAD; SHARD = PADDED // WORLD
+print(f"DP={WORLD}, 参数量 P={P} (pad 到 {PADDED}, 每 rank shard={SHARD}), batch/rank={B}, 训练 {STEPS} 步")
+print("三种 DP 训练 STEPS 步后，参数都应逐元素等于单进程 reference。")
+""")
+
+md(r"""## Part 1 · 单进程 reference（DP 语义的 ground truth）
+
+DP 的语义：每张卡用**不同**的 micro-batch，梯度做平均，参数用相同梯度更新。等价于「用全部数据的 mean loss 训练一个模型」。reference 就这么算（含 SGD momentum）。
+""")
+code(r"""
+def make_data():
+    g = torch.Generator().manual_seed(2)
+    return torch.randn(WORLD*B, H, generator=g), torch.randn(WORLD*B, H, generator=g)
+
+def init_flat():
+    g = torch.Generator().manual_seed(1)
+    return torch.randn(P, generator=g) * 0.2
+
+def forward(flat, x):
+    o=0; W1=flat[o:o+Fh*H].view(Fh,H); o+=Fh*H; b1=flat[o:o+Fh]; o+=Fh
+    W2=flat[o:o+H*Fh].view(H,Fh); o+=H*Fh; b2=flat[o:o+H]
+    return torch.relu(x@W1.t()+b1)@W2.t()+b2
+
+def loss_fn(flat, x, y): return ((forward(flat,x)-y)**2).mean()
+
+def reference():
+    flat = init_flat().clone(); X,Y = make_data(); vel = torch.zeros_like(flat)
+    for _ in range(STEPS):
+        f = flat.clone().requires_grad_(True)
+        l = sum(loss_fn(f, X[r*B:(r+1)*B], Y[r*B:(r+1)*B]) for r in range(WORLD)) / WORLD  # 全局 mean
+        g, = torch.autograd.grad(l, f)
+        vel = MOM*vel + g; flat = flat - LR*vel
+    return flat
+
+REF = reference()
+print("reference 参数前 5 维:", REF[:5].round(decimals=4).tolist())
+""")
+
+md(r"""## Part 2 · 三种 DP 实现（真分布式）
+
+worker 里同时实现 DDP / ZeRO-1 / ZeRO-3，各训练 `STEPS` 步后和 reference 对比。
+
+- **DDP**：本地梯度 → `all_reduce(AVG)` → 完整梯度 → 本地完整 optimizer 更新完整参数。
+- **ZeRO-1**：本地梯度 → `reduce_scatter`（每 rank 只拿 `1/N` 段，求和后 /N 平均）→ **momentum 只存这段** → 更新本段参数 → `all_gather` 拼回完整参数。
+- **ZeRO-3/FSDP**：参数也只存 `1/N`。一个 `AllGatherParam` autograd 原语：forward `all_gather`（shard→full），**backward `reduce_scatter`**（full grad→本段求和梯度）。于是 `loss.backward()` 直接给出本段梯度，整条 FSDP 反向 autograd 自动完成。
+""")
+code(r'''
+%%writefile dp_worker.py
+import os, torch, torch.distributed as dist
+WORLD, H, Fh, B, STEPS, LR, MOM = 2, 4, 8, 3, 4, 0.1, 0.9
+SIZES=[Fh*H, Fh, H*Fh, H]; P=sum(SIZES); PAD=(-P)%WORLD; PADDED=P+PAD; SHARD=PADDED//WORLD
+
+def make_data():
+    g=torch.Generator().manual_seed(2); return torch.randn(WORLD*B,H,generator=g), torch.randn(WORLD*B,H,generator=g)
+def init_flat():
+    g=torch.Generator().manual_seed(1); return torch.randn(P,generator=g)*0.2
+def forward(flat,x):
+    o=0; W1=flat[o:o+Fh*H].view(Fh,H); o+=Fh*H; b1=flat[o:o+Fh]; o+=Fh
+    W2=flat[o:o+H*Fh].view(H,Fh); o+=H*Fh; b2=flat[o:o+H]
+    return torch.relu(x@W1.t()+b1)@W2.t()+b2
+def loss_fn(flat,x,y): return ((forward(flat,x)-y)**2).mean()
+def reference():
+    flat=init_flat().clone(); X,Y=make_data(); vel=torch.zeros_like(flat)
+    for _ in range(STEPS):
+        f=flat.clone().requires_grad_(True)
+        l=sum(loss_fn(f,X[r*B:(r+1)*B],Y[r*B:(r+1)*B]) for r in range(WORLD))/WORLD
+        g,=torch.autograd.grad(l,f); vel=MOM*vel+g; flat=flat-LR*vel
+    return flat
+def shards(flat):
+    if flat.numel()==P: flat=torch.cat([flat, flat.new_zeros(PAD)])
+    return flat.view(WORLD, SHARD)
+
+class AllGatherParam(torch.autograd.Function):   # FSDP: fwd all-gather, bwd reduce-scatter
+    @staticmethod
+    def forward(ctx, shard, group):
+        ctx.group=group; w=group.size(); out=torch.empty(shard.numel()*w, dtype=shard.dtype)
+        dist.all_gather_into_tensor(out, shard.contiguous(), group=group); return out
+    @staticmethod
+    def backward(ctx, g):
+        w=ctx.group.size(); out=torch.empty(g.numel()//w, dtype=g.dtype)
+        dist.reduce_scatter_tensor(out, g.contiguous(), group=ctx.group); return out, None
+
+def run(rank, world):
+    os.environ.setdefault('MASTER_ADDR','127.0.0.1'); os.environ.setdefault('MASTER_PORT','29655')
+    dist.init_process_group('gloo', rank=rank, world_size=world)
+    grp=dist.group.WORLD; X,Y=make_data(); ref=reference()
+    xr,yr = X[rank*B:(rank+1)*B], Y[rank*B:(rank+1)*B]
+
+    # ---- DDP ----
+    flat=init_flat().clone(); vel=torch.zeros_like(flat)
+    for _ in range(STEPS):
+        f=flat.clone().requires_grad_(True); g,=torch.autograd.grad(loss_fn(f,xr,yr), f)
+        dist.all_reduce(g, op=dist.ReduceOp.AVG, group=grp)
+        vel=MOM*vel+g; flat=flat-LR*vel
+    okDDP = torch.allclose(flat, ref, atol=1e-5)
+
+    # ---- ZeRO-1 ----
+    flat=init_flat().clone(); vel_s=torch.zeros(SHARD)        # momentum 只存 1/N
+    for _ in range(STEPS):
+        f=flat.clone().requires_grad_(True); g,=torch.autograd.grad(loss_fn(f,xr,yr), f)
+        gp=torch.cat([g, g.new_zeros(PAD)]); my=torch.empty(SHARD)
+        dist.reduce_scatter_tensor(my, gp.contiguous(), group=grp); my=my/world   # 求和→平均
+        vel_s=MOM*vel_s+my
+        new_shard = shards(flat)[rank]-LR*vel_s               # 只更新本段参数
+        full=torch.empty(PADDED); dist.all_gather_into_tensor(full, new_shard.contiguous(), group=grp)
+        flat=full[:P]
+    okZ1 = torch.allclose(flat, ref, atol=1e-5)
+
+    # ---- ZeRO-3 / FSDP ----
+    shard = shards(init_flat())[rank].clone(); vel_s=torch.zeros(SHARD)   # 参数只存 1/N
+    for _ in range(STEPS):
+        s=shard.clone().requires_grad_(True)
+        full=AllGatherParam.apply(s, grp)[:P]                 # unshard
+        gshard,=torch.autograd.grad(loss_fn(full,xr,yr), s)   # bwd 自动 reduce-scatter 出本段梯度(求和)
+        gshard=gshard/world; vel_s=MOM*vel_s+gshard; shard=shard-LR*vel_s
+    full=torch.empty(PADDED); dist.all_gather_into_tensor(full, shard.contiguous(), group=grp)
+    okZ3 = torch.allclose(full[:P], ref, atol=1e-5)
+
+    res=torch.tensor([okDDP,okZ1,okZ3],dtype=torch.float); dist.all_reduce(res)
+    if rank==0:
+        print(f"DDP={int(res[0])}/{world}  ZeRO-1={int(res[1])}/{world}  ZeRO-3/FSDP={int(res[2])}/{world}  "
+              f"(训练 {STEPS} 步后参数 == 单进程 reference)")
+    dist.destroy_process_group()
+''')
+code(r"""
+import torch.multiprocessing as mp
+import dp_worker, importlib; importlib.reload(dp_worker)
+mp.spawn(dp_worker.run, args=(WORLD,), nprocs=WORLD, join=True)
+print("\n三种 DP 都收敛到同一组参数 ✅  —— 区别只在通信模式与显存占用，数学等价。")
+""")
+
+md(r"""### 这里到底验证了什么？
+
+1. **三者数学等价**：DDP / ZeRO-1 / ZeRO-3 训练 `STEPS` 步后参数逐元素相同。它们只是把「同一个梯度平均 + 更新」用不同的通信切分实现 —— 显存占用不同，数值结果一致。
+2. **ZeRO-1 的 optimizer state 真的只存 `1/N`**：`vel_s` 形状是 `SHARD` 而非 `P`。每 rank 只为自己那段参数维护 momentum，靠 `reduce_scatter` 拿到对应段的平均梯度、`all_gather` 把更新后的参数拼回。通信量 = RS + AG = 2P，和 DDP 的 all-reduce 一样（[`02` 第 4 节](./02_zero_and_distributed_optimizer.md)）。
+3. **FSDP 的反向是「免费」的**：我们只写了 `AllGatherParam`（forward all-gather、backward reduce-scatter）一个原语，`loss.backward()` 就自动在反向触发 reduce-scatter、给出本 rank 那段的求和梯度 —— 这正是 [`03`](./03_fsdp.md) 里 FSDP2 `post_backward` 调 `foreach_reduce`(reduce_scatter) 做的事。参数（`shard`）全程只存 `1/N`。
+""")
+
+md(r"""## Part 3 · 对照通信账本
+
+| | 梯度通信 | 参数通信 | optim state | 参数常驻 |
+|---|---|---|---|---|
+| DDP | all-reduce (2P) | 无 | 全量 (12P) | 全量 (2P) |
+| ZeRO-1 | reduce-scatter (P) | all-gather (P) | **1/N (12P/N)** | 全量 (2P) |
+| ZeRO-3/FSDP | reduce-scatter (P) | all-gather ×(1或2) (P~2P) | 1/N | **1/N (2P/N)** |
+
+对应 [`README` 第 2-3 节](./README.md) 的显存/通信表。
+
+## 练习 / 往真实系统靠
+
+1. 把 `WORLD` 改成 4，`STEPS` 改大，观察三者始终一致。
+2. 把 SGD 换成 **Adam**（每段维护 `m,v`），验证 ZeRO-1/3 仍只存 `1/N` 的 `m,v`。
+3. 给 DDP/ZeRO 的通信加 **bucket**：把 flat 参数分成几段，逐段 `async` reduce-scatter，模拟 [`01`](./01_ddp_and_overlap.md) 的 overlap（CPU 上看正确性）。
+4. FSDP 加 **reshard_after_forward**：forward 后释放 `full`（这里本就没存），backward 前再 all-gather 一次，数一数多了几次 AG（[`03` 第 2 节](./03_fsdp.md)）。
+5. 实现 **HSDP**（`num_distributed_optimizer_instances>1`，[`02` 第 5 节](./02_zero_and_distributed_optimizer.md)）：instance 内 RS/AG、instance 间 all-reduce。
+""")
+
+nb = {"cells":cells,"metadata":{"kernelspec":{"display_name":"Python 3","language":"python","name":"python3"},
+      "language_info":{"name":"python","version":"3.9"}},"nbformat":4,"nbformat_minor":5}
+with open(sys.argv[1],"w") as f: json.dump(nb,f,ensure_ascii=False,indent=1)
+print("wrote", sys.argv[1], "cells:", len(cells))

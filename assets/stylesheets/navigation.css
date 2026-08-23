@@ -1,0 +1,30 @@
+/* Left sidebar: quiet section headers, tree guides, minimal highlight. */
+
+/* Top-level sections read as small uppercase labels instead of heavy links. */
+.md-sidebar--primary .md-nav__item--section > .md-nav__link {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Nested levels get a subtle guide line, like a file tree. */
+.md-sidebar--primary .md-nav__item > .md-nav {
+  margin-left: 0.7rem;
+  border-left: 0.05rem solid var(--md-default-fg-color--lightest);
+}
+
+.md-sidebar--primary .md-nav__link {
+  transition: color 0.15s ease;
+}
+
+.md-sidebar--primary .md-nav__link:hover,
+.md-sidebar--primary .md-nav__link--active {
+  color: var(--md-accent-fg-color);
+}
+
+/* Current page: accent text only, slightly stronger weight. */
+.md-sidebar--primary .md-nav__link--active {
+  font-weight: 600;
+}

@@ -1,0 +1,39 @@
+[submodule "references/megatron-lm"]
+	path = references/megatron-lm
+	url = https://github.com/NVIDIA/Megatron-LM.git
+[submodule "references/sglang"]
+	path = references/sglang
+	url = https://github.com/sgl-project/sglang.git
+[submodule "references/deepgemm"]
+	path = references/deepgemm
+	url = https://github.com/deepseek-ai/DeepGEMM.git
+[submodule "references/deepep"]
+	path = references/deepep
+	url = https://github.com/deepseek-ai/DeepEP.git
+[submodule "references/slime"]
+	path = references/slime
+	url = https://github.com/THUDM/slime.git
+[submodule "references/flash-attention"]
+	path = references/flash-attention
+	url = https://github.com/Dao-AILab/flash-attention.git
+[submodule "references/vllm"]
+	path = references/vllm
+	url = https://github.com/vllm-project/vllm.git
+[submodule "references/fla"]
+	path = references/fla
+	url = https://github.com/fla-org/flash-linear-attention.git
+[submodule "references/deepseek-harness"]
+	path = references/deepseek-harness
+	url = https://github.com/deepseek-ai/deepseek-harness.git
+[submodule "references/agentenv"]
+	path = references/agentenv
+	url = https://github.com/kvcache-ai/AgentENV.git
+[submodule "references/checkpoint-engine"]
+	path = references/checkpoint-engine
+	url = https://github.com/MoonshotAI/checkpoint-engine.git
+[submodule "references/mooncake"]
+	path = references/mooncake
+	url = https://github.com/kvcache-ai/Mooncake.git
+[submodule "references/lmcache"]
+	path = references/lmcache
+	url = https://github.com/LMCache/LMCache.git

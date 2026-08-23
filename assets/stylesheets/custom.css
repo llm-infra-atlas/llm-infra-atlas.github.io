@@ -1,0 +1,21 @@
+/* Site-wide accent hue and header polish. */
+
+[data-md-color-scheme="default"] {
+  --md-accent-fg-color: #0d9488;
+  --md-accent-fg-color--transparent: #0d94881a;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-accent-fg-color: #2dd4bf;
+  --md-accent-fg-color--transparent: #2dd4bf1f;
+}
+
+/* Replace the heavy drop shadow with a hairline for a cleaner look. */
+.md-header {
+  box-shadow: none;
+  border-bottom: 0.05rem solid var(--md-default-fg-color--lightest);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  border-bottom-color: var(--md-default-bg-color--lightest);
+}

@@ -1,0 +1,26 @@
+# MkDocs build output
+/site/
+
+# Python bytecode / virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Python tooling caches and reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter / editor / OS metadata
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+
+# External reference mirrors (local-only, registered in .gitmodules)
+/references/
