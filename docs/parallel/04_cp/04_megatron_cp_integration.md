@@ -1,6 +1,6 @@
-# 04 · Megatron 工程落地
+# 04 · Megatron-LM 实现
 
-前三篇讲的是算法，本篇把 ring、Ulysses 与 dynamic CP 接回真实的训练框架，逐行对应 Megatron-LM（pin 在 commit `e03878b5f`）的实现。回答四个工程问题：
+前三篇讲的是算法，本篇把 ring、Ulysses 与长文负载均衡接回真实的训练框架，逐行对应 Megatron-LM（pin 在 commit `e03878b5f`）的实现。回答四个工程问题：
 
 1. batch 如何按 CP rank 切分（pretrain 的 zigzag、SFT 的 packed THD、hybrid CP 三条路径）；
 2. CP process group 如何构造（常规、分层、hybrid 三类组）；
@@ -187,7 +187,7 @@ list 形式的长度必须等于 `num_layers`（校验在 transformer_config.py:
 
 ## 7. Hybrid CP：dynamic CP 的 Megatron 形态
 
-03 篇 §5.2 介绍了 NVIDIA Dynamic-CP 的调度思想，它在 Megatron 里的对应实现就是 hybrid CP，代码分布在 `megatron/core/pipeline_parallel/hybrid_cp_schedule.py` 和 `megatron/core/datasets/data_schedule.py` 两个文件里。两者的关系值得先交代清楚：hybrid CP 的调度粒度是 per-sub-sample，即每条序列各自决定一个 CP size，求解用轻量启发式；NVIDIA 博客里的 Dynamic-CP 则是 per-microbatch 粒度，用 cost model 加 simulator 更精细地处理 PP 气泡。粒度不同，但共享的骨架完全一致——**预建 2 的幂子组（第 2.3 节），由调度器写入 `local_cp_size` 与 `cp_group`，TE 逐 microbatch 换组（第 3.2 节）**。本节的三个小节分别对应这条链路上的调度、数据搬运和训练循环。
+03 篇 §2.4/§3.1 介绍了 Megatron-LM Dynamic CP 的调度思想，它在 Megatron 里的对应实现就是 hybrid CP，代码分布在 `megatron/core/pipeline_parallel/hybrid_cp_schedule.py` 和 `megatron/core/datasets/data_schedule.py` 两个文件里。两者的关系值得先交代清楚：hybrid CP 的调度粒度是 per-sub-sample，即每条序列各自决定一个 CP size，求解用轻量启发式；NVIDIA 博客里的 Dynamic CP 则是 per-microbatch 粒度，用 cost model 加 simulator 更精细地处理 PP 气泡。粒度不同，但共享的骨架完全一致——**预建 2 的幂子组（第 2.3 节），由调度器写入 `local_cp_size` 与 `cp_group`，TE 逐 microbatch 换组（第 3.2 节）**。本节的三个小节分别对应这条链路上的调度、数据搬运和训练循环。
 
 ### 7.1 `BalancedCPScheduler`：调度算法
 
@@ -253,6 +253,6 @@ flowchart TB
 
 - Megatron-LM CP 实现（commit `e03878b5f`）：[[megatron-lm:megatron/core/utils.py#L2256-L2417]]、[[megatron-lm:megatron/core/pipeline_parallel/hybrid_cp_schedule.py]]、[[megatron-lm:megatron/core/parallel_state.py#L359-L443]]、[[megatron-lm:megatron/core/extensions/transformer_engine.py#L1583-L1881]]、[[megatron-lm:megatron/core/models/common/embeddings/rope_utils.py#L48-L265]]。
 - TransformerEngine `DotProductAttention`：ring / a2a / 分层 CP kernel 的真正实现。
-- 算法见 [01](./01_ring_attention.md) / [02](./02_ulysses_a2a.md)，dynamic CP 的工作谱系见 [03](./03_dynamic_cp.md)。
+- 算法见 [01](./01_ring_attention.md) / [02](./02_ulysses_a2a.md)，长文负载均衡的工作谱系见 [03](./03_long_ctx_load_balance.md)。
 
 把算法、工作谱系和工程实现都过了一遍之后，最好的检验方式是自己动手：完成 [[atlas:docs/parallel/04_cp/cp_lab.ipynb|CP lab]]，手写 ring attention（online softmax + 真实 P2P）与 Ulysses（all-to-all）两条路径，逐元素对齐 full attention，并跑通 zigzag 负载均衡切分。

@@ -100,7 +100,7 @@ world = DP × CP × TP × PP    ;  PP 放在 TP 外、DP 内（通信少、跨�
 | **PP × DP** | 每个 PP stage 是独立 DP 组；DDP bucketing 在非 first stage 调整（[01 · Megatron DDP：连续 buffer、bucket、grad-ready hook 与 overlap](../01_dp/01_ddp_and_overlap.md)） | 03 |
 | **PP × VPP** | virtual pipeline 是 PP 的「细化」，每卡多个 model chunk | 02 |
 | **PP × EP** | MoE 的 all-to-all 与 PP 的 P2P 可 overlap（combined-1F1B / DualPipe 的核心） | 03, [EP](../05_ep/README.md) |
-| **PP × CP** | 正交；中间 stage 的 batch CP 切分跳过（[04 · Megatron 工程落地](../04_cp/04_megatron_cp_integration.md)） | 03 |
+| **PP × CP** | 正交；中间 stage 的 batch CP 切分跳过（[04 · Megatron-LM 实现](../04_cp/04_megatron_cp_integration.md)） | 03 |
 
 ## 6. PP vs TP：什么时候用 PP
 

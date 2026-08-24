@@ -98,7 +98,7 @@ DP 不是孤立存在的，它要和 TP、PP、CP、EP 这些其它并行维度�
 
 | 耦合 | 要点 |
 |---|---|
-| **DP × CP** | 梯度规约域是 `dp_cp`（CP 在梯度上像 DP，见 [04 · Megatron 工程落地：切分、传参、RoPE、hybrid CP、与其它并行的协同](../04_cp/04_megatron_cp_integration.md)）。Megatron 用 `data_parallel_group(with_context_parallel=True)` |
+| **DP × CP** | 梯度规约域是 `dp_cp`（CP 在梯度上像 DP，见 [04 · Megatron-LM 实现：切分、传参、RoPE、hybrid CP、与其它并行的协同](../04_cp/04_megatron_cp_integration.md)）。Megatron 用 `data_parallel_group(with_context_parallel=True)` |
 | **DP × TP** | TP 的梯度本来就切开（每卡不同权重分片），DP 在 TP 之上对「相同分片」做规约。`CUDA_DEVICE_MAX_CONNECTIONS=1` 让 TP/DP 通信错峰（[04 · TP/SP 的通信-计算 overlap 与工程优化](../02_tp_sp/04_overlap_and_optimizations.md)） |
 | **DP × PP** | PP 各 stage 是不同的 DP 副本组；DDP 的 bucketing 在非 first stage / interleaved 的后续 chunk 会调整（[[megatron-lm:megatron/core/distributed/distributed_data_parallel.py#L105]]）|
 | **DP × EP** | MoE 的 expert 有独立的 `expert_data_parallel_group`；expert 参数的 DP 规约域不同于 attention（见 [EP](../05_ep/README.md)） |

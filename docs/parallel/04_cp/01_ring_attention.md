@@ -96,7 +96,7 @@ causal 条件下，query $i$ 只能 attend 到 $j \le i$ 的 key。在 ring 中�
 
 ## 4. 负载均衡
 
-目前有两种主流修正方案（Megatron 采用 zigzag，见 [[megatron-lm:megatron/core/utils.py#L2308]]）：
+要先明确一点：这一节的问题是 ring（以及一切按 seq 切的 CP）特有的——causal 下每个 chunk 的计算量取决于它在序列中的位置，越靠后的 chunk 要 attend 的 KV 越多。Ulysses 按 head 切则没有这个问题，各 rank 拿到的是完全同构的一份工作量（见 02 第 3 节）。对 ring 来说，目前有两种主流修正方案（Megatron 采用 zigzag，见 [[megatron-lm:megatron/core/utils.py#L2308]]）：
 
 **zigzag（load-balanced，Megatron 默认）**：把序列切成 $2N$ 块，rank $i$ 取 chunk $i$ 和 chunk $2N-1-i$（一前一后）。这样每个 rank 都持有一个「轻」块（靠前）和一个「重」块（靠后），总工作量大致为常数。
 
@@ -107,6 +107,8 @@ CP=2, 序列分 4 块 [c0 c1 c2 c3]:
 ```
 
 **striped attention**（[arXiv:2311.09431](https://arxiv.org/abs/2311.09431)）：用条带方式交错分配 token（rank $i$ 拿 $i, i+N, i+2N, \dots$），使每个块内部都是近似满的 causal，均衡效果更好，对 ring 也更友好。
+
+两种方案还有一个共同的前提：切分对象是一条完整的 causal 序列，「前半轻、后半重」的对称性才成立。当序列是 packed 的、内部装着多条文档时，对整条做一次 zigzag 并不能保证每个 rank 在每条文档内部拿到对称的轻重块——这个缺陷及其修正（per-document sharding 等）留到 [03](./03_long_ctx_load_balance.md) 第 4 节讨论。
 
 > 对工程实现的影响：zigzag/striped 之后，rank 持有的 token 不再连续，RoPE position、attention mask、KV 块到达时的 mask 逻辑都要按真实 position 重新计算。这是 CP 实现中容易出错的部分；TE 把这部分封装在 kernel 内部，Megatron 只负责传入正确的 `cu_seqlens` 和切分结果（见 04）。
 

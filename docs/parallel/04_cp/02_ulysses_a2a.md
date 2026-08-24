@@ -58,7 +58,10 @@ all-to-all 本质上是一次分布式转置。以第一次 a2a（seq→head）�
 | 单卡通信量 | $O(s \cdot d \cdot \mathrm{heads})$（KV 转一圈）| $O(s \cdot d \cdot \mathrm{heads} / \mathrm{cp}) \times 2 \approx$ 与 ring 同阶，但**常数小、可合并**|
 | 能否 overlap | ✅（P2P async 藏进 compute）| ❌（a2a 是 barrier，attention 必须等它）|
 | 本地 attention | flash，$O(s^2/\mathrm{cp})$ /卡 | flash，$O(s^2)$ 在 $\mathrm{heads}/\mathrm{cp}$ 个 head 上 |
+| 负载均衡 | causal 下按 seq 切，各 chunk 计算量随位置递增，需要 zigzag 配对修正（01 第 4 节） | 按 head 切，各 rank 拿到完全同构的一份，天然均衡、无需修正 |
 | **约束** | 无 | **`cp ≤ num_heads` 且 `num_heads % cp == 0`** |
+
+负载均衡这一行值得展开。按 head 切时，不同 head 的 attention 是完全同构的计算——每个 head 的 query-key 对数、Q/K/V/O 字节量、kernel 调用结构都相同，等宽切分后各 CP rank 拿到的是数学上严格相等的一份工作量；causal 带来的计算量差异发生在每个 head 内部、由单卡完整承担，天然被摊平。zigzag 要修的「位置越靠后算得越多」问题，只在按 seq 切的世界里存在。按 head 切对 FlashAttention 也更友好：FA 的吞吐对每次调用的 head 数减少不敏感，却对 sequence block 变短很敏感（Q_len 不足一个 tile 仍按整块计费），所以同样切成 $\mathrm{cp}$ 份，head 维切出的是 $\mathrm{cp}$ 个效率无损的同构 chunk，seq 维切出的则是成本递增且越切越短的 chunk。这个对比是长文负载均衡的重要背景，[03](./03_long_ctx_load_balance.md) 第 4 节会结合 Libra 的实测展开。
 
 head 数约束是 Ulysses 的硬限制：要把 head 切到 $\mathrm{cp}$ 张卡，head 数必须不小于 cp 且能整除。GQA/MQA 下这个约束更紧：Q 的 head 数虽然够，但 KV 的 head 数很少（甚至只有 1 个），按 KV head 切分时 `cp ≤ num_kv_heads` 往往先触顶——这也是 Ulysses 类方案在长上下文 GQA 模型上常只开很小 cp 的原因。Ring 没有这个约束，因此超大 CP（CP > heads）必须使用 ring 或分层方案。
 
@@ -106,4 +109,4 @@ Ulysses 的 backward 非常直接：两次 all-to-all 都是线性算子，其�
 - Megatron `cp_comm_type` 与分层 CP：[[megatron-lm:megatron/core/transformer/transformer_config.py#L891]], [[megatron-lm:megatron/core/parallel_state.py#L553-L973]]。
 - all-to-all 原语：[[megatron-lm:megatron/core/tensor_parallel/mappings.py#L420]]。
 
-Ring 和 Ulysses 都默认 batch 内序列等长、CP size 固定。当数据变成变长的（SFT、RL、多模态），静态 CP 会在显存、计算、通信上同时制造浪费。下一篇[03 · Dynamic CP](./03_dynamic_cp.md)会系统调研围绕这个问题的一批工作（ChunkFlow / WLB-LLM / Skrull / FlexSP / DCP / Libra 等），并按「动数据、动调度、动并行度、动计算放置」四条路线归纳它们的思想与算法。
+Ring 和 Ulysses 都默认 batch 内序列等长、CP size 固定。当数据变成变长的（SFT、RL、多模态），静态 CP 会在显存、计算、通信上同时制造浪费。下一篇[03 · 长文负载均衡](./03_long_ctx_load_balance.md)会系统调研围绕这个问题的一批工作（ChunkFlow / WLB-LLM / Skrull / FlexSP / DCP / Libra 等），并按「不均衡发生在哪个维度」——CP group 内、CP group 间、PP 维——重新组织它们的思想与算法。

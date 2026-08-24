@@ -91,8 +91,8 @@ nav:
               - parallel/04_cp/README.md
               - Ring attention: parallel/04_cp/01_ring_attention.md
               - Ulysses A2A: parallel/04_cp/02_ulysses_a2a.md
-              - Dynamic CP: parallel/04_cp/03_dynamic_cp.md
-              - Megatron-LM CP 实现: parallel/04_cp/04_megatron_cp_integration.md
+              - 长文负载均衡: parallel/04_cp/03_long_ctx_load_balance.md
+              - Megatron-LM 实现: parallel/04_cp/04_megatron_cp_integration.md
           - EP:
               - parallel/05_ep/README.md
               - Router / preprocess: parallel/05_ep/01_router_and_preprocess.md

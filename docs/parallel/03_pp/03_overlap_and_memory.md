@@ -221,7 +221,7 @@ rank 排布(常见): TP 最内(NVLink) → CP → PP → DP 最外(IB)
 | **PP × DP** | 每个 stage 是独立 DP 组；DDP 的 grad 通信在「最后一个 micro-batch 的 backward 完成后」触发（不是每个 micro-batch），所以 DP 通信落在 cooldown 之后；非 first stage 关 bucketing（[01 · Megatron DDP：连续 buffer、bucket、grad-ready hook 与 overlap](../01_dp/01_ddp_and_overlap.md)，[[megatron-lm:megatron/core/distributed/distributed_data_parallel.py#L105]]）|
 | **PP × VPP** | VPP 是 PP 的细化（[`02`](./02_interleaved_zerobubble_dualpipe.md)）；`microbatch_group_size_per_vp_stage` 控制每个 virtual stage 连续处理几个 micro-batch |
 | **PP × EP** | combined-1F1B / DualPipe 把 EP all-to-all overlap 进 PP（第 3 节）|
-| **PP × CP** | 正交；中间 stage 的 batch 非 metadata 字段为 None，CP 切分跳过（[04 · Megatron 工程落地](../04_cp/04_megatron_cp_integration.md)）|
+| **PP × CP** | 正交；中间 stage 的 batch 非 metadata 字段为 None，CP 切分跳过（[04 · Megatron-LM 实现](../04_cp/04_megatron_cp_integration.md)）|
 | **embedding/loss** | input/output embedding 在 first/last stage，weight-tying 要跨 PP first↔last all-reduce 同步梯度（`finalize_model_grads`）；loss 只在 last stage 算 |
 
 ## 5. bubble、显存与通信的权衡

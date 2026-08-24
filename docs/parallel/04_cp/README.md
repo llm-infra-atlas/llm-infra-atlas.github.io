@@ -1,6 +1,6 @@
 # Context Parallelism (CP)
 
-本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先介绍 Ring 与 Ulysses 两大算法家族；之后的 01/02 两篇分别深入两者，03 调研变长序列下的 dynamic CP 工作谱系，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。
+本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先介绍 Ring 与 Ulysses 两大算法家族；之后的 01/02 两篇分别深入两者，03 以负载均衡为线索调研长上下文训练（变长序列）下的一批工作，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。
 
 ## 前置知识
 
@@ -73,11 +73,13 @@ val = val.index_select(seq_dim, index)
 
 以 CP=2 为例（注释见 [[megatron-lm:megatron/core/utils.py#L2317]]）：4 个 chunk 分配为 `(chunk0, chunk3) → GPU0`、`(chunk1, chunk2) → GPU1`。这样每个 rank 都同时持有「轻」块和「重」块，工作量大致相等。这就是文献中的 zigzag / load-balanced CP（Striped Attention 是另一种等价思路，[arXiv:2311.09431](https://arxiv.org/abs/2311.09431)）。
 
+> zigzag 是「按 seq 切」的 CP（ring 家族）特有的修正：causal 下每个 chunk 的计算量跟它在序列中的位置挂钩，一前一后配对才能拉平。Ulysses 按 head 切，各 rank 拿到的是完全同构的一份工作量，天然均衡，不需要这类修正（详见 02 第 3 节）。另外 zigzag 的配对成立有一个前提——切分对象是一条完整的 causal 序列；packed 序列里装着多条文档时，对整条做一次 zigzag 并不能保证每条文档内部均衡，这是 03 篇反复出现的出发点。
+
 > 需要特别注意：CP 下 rank r 持有的 token 不是连续的一段，而是两块对称的 chunk。这会影响 RoPE 的 position id 计算、loss mask，以及与 PP/SP 切分的协调（详见 04）。
 
 ## 4. sequence packing：变长数据怎么进模型
 
-01 到 03 会反复用到 sequence packing 这个概念，它是现代训练组织数据的基本事实，先在这里讲清楚，后面 dynamic CP 的讨论才不会悬空。
+01 到 03 会反复用到 sequence packing 这个概念，它是现代训练组织数据的基本事实，先在这里讲清楚，后面长文负载均衡的讨论才不会悬空。
 
 真实语料的序列长度是长尾分布的（具体数字见 03 篇 §1.1）。最朴素的对齐方式是按 batch 内最长序列 padding：99% 短于 4K 的语料里混进一条 300K，整个 batch 都得按 300K 做 attention，算力大量烧在 pad token 上。sequence packing 的做法是把多条文档首尾相接，填满一条定长序列，padding 降到接近零。但拼接本身破坏了两个不变量，必须配套修复：
 
@@ -89,7 +91,7 @@ Megatron 里先后有两代做法，刚好对应两种数据布局：
 - **BSHD 路径（pretrain 默认）**：GPT 数据集本来就把多条文档拼满 `seq_length`，文档边界由 eod token 标出；打开 `--reset-attention-mask` / `--reset-position-ids`（[[megatron-lm:megatron/training/arguments.py#L2945-L2950]]）后，dataloader 在 eod 处重置 attention mask 与 position id（`get_ltor_masks_and_position_ids`，[[megatron-lm:megatron/training/utils/common_utils.py#L337]]）。数据保持 `[b, s]` 的稠密布局，mask 是显式构造的。
 - **THD 路径（SFT 与长上下文）**：变长序列直接拼成一条 token 流，batch 维塌成 `total_tokens`，用 `cu_seqlens` 记录每条 sub-sequence 的边界，交给 TE / FlashAttention 的 varlen kernel——block-diagonal mask 不再显式物化，而由边界信息在 kernel 内隐式实现。THD 布局与 `PackedSeqParams` 的细节见 [TP/SP 章](../02_tp_sp/README.md) 对 packed 格式的说明；Megatron 的 SFT dataset 就走这条路：逐条 conversation pack 进同一序列、position 逐条重计，并断言不再使用 `reset_position_ids`（[[megatron-lm:megatron/training/datasets/sft_dataset.py#L124]]）。
 
-所以「packing 是不是现在 Megatron 训练的标准做法」的答案是肯定的，而且从来都是：pretrain 从 GPT 时代起就是「拼满定长序列、在 eod 处 reset mask」，SFT 与长上下文场景则换成了更彻底的 THD varlen 形态，03 篇会看到的 NVIDIA Dynamic-CP 同样以 packed THD 为前提。真正新的问题不在 packing 本身，而在 **packed 之后 CP 怎么切**：zigzag（§3）假设切分对象是一条从头到尾的 causal 序列，packed 序列里却装着多条文档；而且一条 packed 序列的 attention 工作量正比于各文档长度的平方和 $\sum_j \ell_j^2$，而不是 $(\sum_j \ell_j)^2$——「等 token 数」不再等于「等计算量」。这两个张力正是 03 篇 dynamic CP 的全部出发点。
+所以「packing 是不是现在 Megatron 训练的标准做法」的答案是肯定的，而且从来都是：pretrain 从 GPT 时代起就是「拼满定长序列、在 eod 处 reset mask」，SFT 与长上下文场景则换成了更彻底的 THD varlen 形态，03 篇会看到的 Megatron-LM Dynamic CP 同样以 packed THD 为前提。真正新的问题不在 packing 本身，而在 **packed 之后 CP 怎么切**：zigzag（§3）假设切分对象是一条从头到尾的 causal 序列，packed 序列里却装着多条文档；而且一条 packed 序列的 attention 工作量正比于各文档长度的平方和 $\sum_j \ell_j^2$，而不是 $(\sum_j \ell_j)^2$——「等 token 数」不再等于「等计算量」。这两个张力正是 03 篇长文负载均衡的全部出发点。
 
 ## 5. Megatron 的 CP 集成
 
@@ -144,11 +146,11 @@ b = 1
 | `README.md`（本文） | 为什么需要 CP、两大家族（Ring vs Ulysses）总览、zigzag 负载均衡、sequence packing 与变长数据的组织、Megatron 的接入方式、与 TP/SP/DP/PP 的耦合 | `utils.py`, `transformer_config.py` |
 | [01 · Ring Attention](./01_ring_attention.md) | Ring Attention 深入：blockwise online softmax、KV 沿环 P2P、causal 负载不均与 zigzag/striped 修正、通信-计算 overlap、显存分析 | Ring Attention / Blockwise / Striped 论文 |
 | [02 · DeepSpeed-Ulysses](./02_ulysses_a2a.md) | DeepSpeed-Ulysses：用 all-to-all 在 sequence 切分与 head 切分之间转换、复杂度对比、head 数约束、`a2a+p2p` 分层 CP | Ulysses 论文，`mappings.py::_AllToAll` |
-| [03 · Dynamic CP](./03_dynamic_cp.md) | 变长序列下的 dynamic CP：静态 CP 失效的三个症状、统一的调度问题视角、四条技术路线（重组数据 / 调度数据 / 动态并行度 / 重划分计算），覆盖 ChunkFlow、WLB-LLM、Skrull、FlexSP、NVIDIA Dynamic-CP、DCP、Libra | 七篇论文/博客的算法与伪代码 |
-| [04 · Megatron 工程落地](./04_megatron_cp_integration.md) | Megatron 工程落地：`get_batch_on_this_cp_rank` 三条切分路径、CP group 构造（常规/分层/hybrid）、TE 传参与 per-microbatch 换组、RoPE 的 CP 处理、hybrid CP 调度器、与 SP/TP/PP 的协同 | [[megatron-lm:megatron/core/utils.py#L2308]], `attention.py`, `hybrid_cp_schedule.py` |
+| [03 · 长文负载均衡](./03_long_ctx_load_balance.md) | 长上下文训练的负载均衡：不均衡的三个维度（CP group 内 / CP group 间 / PP 维）、代价模型与 packing 的 Σℓ² 效应、按维度归类的七个工作（Libra、Skrull、WLB-LLM、FlexSP、Megatron-LM Dynamic CP、DCP、ChunkFlow），Ulysses 按 head 切的均衡优势与 ring 的 zigzag 家族 | 七篇论文/博客的算法与伪代码 |
+| [04 · Megatron-LM 实现](./04_megatron_cp_integration.md) | Megatron 工程落地：`get_batch_on_this_cp_rank` 三条切分路径、CP group 构造（常规/分层/hybrid）、TE 传参与 per-microbatch 换组、RoPE 的 CP 处理、hybrid CP 调度器、与 SP/TP/PP 的协同 | [[megatron-lm:megatron/core/utils.py#L2308]], `attention.py`, `hybrid_cp_schedule.py` |
 | [[atlas:docs/parallel/04_cp/cp_lab.ipynb]] | 纯 torch 手写 ring attention（online softmax + 真实 P2P）和 Ulysses（all-to-all）两条路径，CPU/gloo 本地多进程，逐元素对齐 full attention，并演示 zigzag 负载均衡 | —— |
 
-建议按顺序阅读：本文先建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、调研变长序列下的 dynamic CP 工作谱系，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），最后通过 lab 亲手实现两条路径。
+建议按顺序阅读：本文先建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、以负载均衡的维度为线索调研长上下文训练的一批工作，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），最后通过 lab 亲手实现两条路径。
 
 ## 参考代码
 
