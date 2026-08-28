@@ -80,7 +80,7 @@ causal 条件下，query $i$ 只能 attend 到 $j \le i$ 的 key。在 ring 中�
 | $\text{src} = i$（自己这块） | 下三角 causal mask |
 | $\text{src} > i$（KV 全在 query 之后） | 全跳过（不算，省一半计算） |
 
-因此在朴素的顺序切分下，rank $i$ 只需计算 $i+1$ 块（位于其后的块全部跳过）。这也解释了 README 第 3 节提到的负载不均：rank 0 只算 1 块，rank $N-1$ 要算 $N$ 块，工作量从 $O(1)$ 到 $O(N)$ 线性递增，而 ring 的每一步都要等待最慢的那张卡。
+因此在朴素的顺序切分下，rank $i$ 只需计算 $i+1$ 块（位于其后的块全部跳过）。这也解释了 README 第 4 节提到的负载不均：rank 0 只算 1 块，rank $N-1$ 要算 $N$ 块，工作量从 $O(1)$ 到 $O(N)$ 线性递增，而 ring 的每一步都要等待最慢的那张卡。
 
 把 CP=4 的整个过程展开成一张 trace 表会更直观。表中第 `step` 行表示该步每个 rank 正在处理的 KV 块来源（`—` 表示因 causal 跳过，不算但通信照常轮转）：
 
@@ -122,7 +122,7 @@ ring 的 backward 与 forward 结构对称：forward 把 KV 沿环正向传递�
 
 ## 6. 显存与通信分析
 
-沿用 README 第 7 节的数值示例：`s=128K, cp=8, heads=64, d=128, bf16`，每卡持有 `s/cp=16K` 个 token：
+沿用 README 第 8 节的数值示例：`s=128K, cp=8, heads=64, d=128, bf16`，每卡持有 `s/cp=16K` 个 token：
 
 | 量 | 单卡（无 CP） | Ring CP=8 |
 |---|---|---|

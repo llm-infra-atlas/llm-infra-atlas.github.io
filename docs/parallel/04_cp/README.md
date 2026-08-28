@@ -1,6 +1,6 @@
 # Context Parallelism (CP)
 
-本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先介绍 Ring 与 Ulysses 两大算法家族；之后的 01/02 两篇分别深入两者，03 以负载均衡为线索调研长上下文训练（变长序列）下的一批工作，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。
+本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先给出一个统一抽象——Q-KV 二部任务图（attention pool），把 Ring 与 Ulysses 两大算法家族以及后续的负载均衡工作纳入同一框架；之后的 01/02 两篇分别深入两者，03 以负载均衡为线索调研长上下文训练（变长序列）下的一批工作，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。
 
 ## 前置知识
 
@@ -20,9 +20,103 @@ CP 的思路是把 sequence 维 $s$ 切到 $\mathrm{cp}$ 张卡，每卡只持�
 
 > 序列被切开后，如何让每个 query 拿到它需要的所有 KV，同时不把通信变成瓶颈、不让显存退回 $O(s^2)$？
 
-Ring 与 Ulysses 给出了两种不同的答案。
+Ring 与 Ulysses 给出了两种不同的答案。不过在进入具体算法之前，值得先把这个问题抽象成一张统一的任务图——Ring 与 Ulysses 都只是这张图上的具体调度。
 
-## 2. Ring 与 Ulysses 两种算法
+## 2. 统一抽象：Q-KV 二部任务图
+
+本节给出一个能把全章串起来的抽象。后面会看到，Ring、Ulysses 以及 03 篇的全部负载均衡工作，都可以纳入同一个对象——一张 Q-KV 二部任务图——之上的不同调度方案。
+
+### 2.1 任务图与 attention pool
+
+固定一个 attention head。把 query 序列切成 $n_q$ 个 Q block，KV 序列切成 $n_k$ 个 KV segment：
+
+$$
+\mathcal{Q}=\{Q_0,Q_1,\ldots,Q_{n_q-1}\},\qquad
+\mathcal{K}=\{(K_0,V_0),\ldots,(K_{n_k-1},V_{n_k-1})\}
+$$
+
+attention mask 决定哪些 block 对之间需要计算，定义边集：
+
+$$
+E=\{(i,j)\mid Q_i\text{ 中至少有一个 query 可以看到 }KV_j\}
+$$
+
+$(\mathcal{Q},\mathcal{K},E)$ 构成一张二部图。不同的 mask 只是这张图的不同形态：full attention 是完全二部图；causal 是「下三角」图，$Q_i$ 只连 $j\le i$ 的边；sliding window 和 packed 序列的 block-diagonal mask（§5）则是更稀疏的图——稀疏 mask 下大量根本不存在的计算，在图这一层就被天然剔除了。
+
+```mermaid
+flowchart LR
+    subgraph QB["Q blocks"]
+        q0["Q0"]
+        q1["Q1"]
+        q2["Q2"]
+        q3["Q3"]
+    end
+    subgraph KVB["KV segments"]
+        k0["K0,V0"]
+        k1["K1,V1"]
+        k2["K2,V2"]
+        k3["K3,V3"]
+    end
+    q0 --> k0
+    q1 --> k0
+    q1 --> k1
+    q2 --> k0
+    q2 --> k1
+    q2 --> k2
+    q3 --> k0
+    q3 --> k1
+    q3 --> k2
+    q3 --> k3
+```
+
+> 图：causal mask 下的 Q-KV 二部任务图（4 块示例）。每条边是一个独立的 tile-attention 任务；任务总数随 Q block 的位置递增，这正是 causal 负载不均的来源（§4）。
+
+每条边 $(i,j)$ 是一个独立的 tile-attention 任务，产出一份可归约的 partial state：
+
+$$
+A_{ij}=(O_{ij},\,L_{ij})=\operatorname{TileAttention}(Q_i,K_j,V_j,M_{ij})
+$$
+
+其中 $L_{ij}$ 是局部 LSE（log-sum-exp），即 $Q_iK_j^{\top}/\sqrt{d}$ 经 mask 后按行的 log-sum-exp，每个 query 行一个标量；$O_{ij}$ 是只在该 KV segment 内归一化的局部输出。每个任务只依赖自己那条边的数据，任务之间没有任何顺序依赖，因此可以把整张图看做一个 **attention pool**：一个可以随意切分、随意放置、随时归约的 tile 任务池。
+
+### 2.2 partial state 的归约
+
+softmax 的分母是全局量，但 log-sum-exp 具有良好的归约结构。对同一个 $Q_i$，把所有连到它的边的 partial state 合并只需要两步：
+
+$$
+L_i=\log\sum_{j\in E(i)}\exp(L_{ij}),\qquad
+O_i=\sum_{j\in E(i)}\exp\!\big(L_{ij}-L_i\big)\,O_{ij}
+$$
+
+第一步把各 tile 的局部 LSE 合并成全局 LSE；第二步按权重 $\exp(L_{ij}-L_i)$ 对局部输出加权求和——直觉上，每个 tile 的贡献正比于它占全局 softmax 分母的份额。把这个合并记为算子 $\oplus$，则每个 Q block 的最终输出为：
+
+$$
+A_i=\bigoplus_{j\in E(i)}A_{ij}
+$$
+
+关键在于 $\oplus$ 满足结合律与交换律（浮点舍入除外）：归约可以按任意顺序、任意分组、在任何一台设备上进行，结果不变。这个归约其实并不新鲜——FlashAttention 的 online softmax 是它的 streaming 形态（running state $(m,l,O)$ 逐块吸收新 tile，01 第 1 节会完整给出）；推理侧 FlashDecoding 的 split-KV combine kernel 是它的 tree-reduce 形态。CP 的全部自由度正来源于此：pool 里的任务可以任意调度，最后总能用 $\oplus$ 拼回正确结果。
+
+### 2.3 Ring 与 Ulysses 是这张图上的静态调度
+
+有了任务图，「选哪个 CP 算法」就变成了一个调度问题：把池中的任务分配到各 rank，并决定 Q、KV 与 partial state 谁移动、谁不动。三类典型策略：
+
+1. **Q 不动、KV 流动（ring 家族）**。每个 rank 固定持有若干 Q block，KV segment 沿环逐站轮转，每到达一块就把它的 partial state 就地 $\oplus$ 进本地 running state。归约点放在 Q 的属主，归约本身零通信，代价是 KV 要转满一圈；all-gather KV 是它的退化形态（一把拉齐全部 KV）。Ring Attention（01）建立在这一策略上。
+2. **KV 不动、Q 流动**。反过来把 Q block 派发到 KV 所在的 rank，算完把 partial state 送回 Q 的属主做 $\oplus$ 归约。KV 不移动意味着 backward 的 $dK/dV$ 也留在本地，代价是 forward 多一趟 output 的返程通信。推理侧的 FlashDecoding 就是这个策略的单机版本；训练侧 Libra TAP 的 tile 放置（03 第 3.2 节）在 tile 粒度上混合使用策略 1 与 2——优先把 tile 放到「KV 已驻留」或「Q 的属主」rank 上，正是对这两种数据移动成本的权衡。
+3. **head repartition（Ulysses）**。换一个维度：attention 在 head 维上天然独立，整张二部图可以按 head 切成若干同构的子图，每张子图（完整序列、$h/\mathrm{cp}$ 个 head）整体交给一个 rank 在本地算完，归约也全部发生在本地。这相当于 $n_q=n_k=1$ 的退化调度——每卡只算一条边，但这条边覆盖完整序列；两次 all-to-all 只是进出这一 layout 的搬运费。Ulysses（02）即此策略。
+
+Megatron 的 `a2a+p2p` 分层 CP 则是策略组合：node 内用策略 3（a2a 延迟低），node 间用策略 1（ring 可 overlap），按带宽层级各取所长（02 第 4 节）。
+
+### 2.4 负载均衡是这张图上的划分问题
+
+调度的成本模型很简单：边 $(i,j)$ 的计算量正比于 $|Q_i|\cdot|KV_j|$，负载均衡就是给每个 rank 分一个子图，使各子图的边权总和相等。全章遇到的所有均衡方案都是对这句话的具体化：
+
+- causal 图的边权随 $i$ 递增，朴素按 seq 切必然失衡；zigzag / striped 是给这张「下三角」图设计的**静态均衡划分**（§4，01 第 4 节）。
+- 按 head 切（策略 3）切出的子图完全同构，边权天然相等，无需任何修正（02 第 3 节）。
+- packed 变长序列的边权不再规则（工作量正比于各文档长度的平方和，§5），静态划分失效，03 篇的一批工作因此把调度做成动态的：Libra TAP 逐个放置图中的 tile，DCP 则更进一步，把「data block + computation block + placement 求解」明确写成框架——可以说 DCP 就是把本节这张图的调度问题原样交给了求解器（TAP 与 DCP 均在 03 第 3.2 节）；MagiAttention 则用贪心求解器决定 chunk 到 rank 的任意置换，把 zigzag 的固定配对推广为逐 case 求解（03 第 4.4 节）。
+
+接下来的 §3 先按传统视角并排对比 Ring 与 Ulysses 两个家族，01/02 再分别深入。
+
+## 3. Ring 与 Ulysses 两种算法
 
 ```mermaid
 flowchart TB
@@ -60,7 +154,7 @@ flowchart TB
 
 > 图（Ulysses）：QKV projection 阶段按 sequence 切（每卡 $s/\mathrm{cp}$ token、全部 head）；进 attention core 前用 all-to-all 转成按 head 切（每卡全部 token、$h/\mathrm{cp}$ head），本地算完整序列的 attention，再用一次 all-to-all 切回 sequence。两次 a2a 是分布式转置，全程每卡只持 $1/\mathrm{cp}$ 数据、不复制。（Jacobs et al. 2023, Fig 2；[arXiv:2309.14509](https://arxiv.org/abs/2309.14509)）
 
-## 3. causal mask 下的负载均衡（zigzag）
+## 4. causal mask 下的负载均衡（zigzag）
 
 Megatron 的 `get_pretrain_batch_on_this_cp_rank`（[[megatron-lm:megatron/core/utils.py#L2308]]）把序列切成 $2\mathrm{cp}$ 个 chunk，每个 rank 取一前一后两块：
 
@@ -77,7 +171,7 @@ val = val.index_select(seq_dim, index)
 
 > 需要特别注意：CP 下 rank r 持有的 token 不是连续的一段，而是两块对称的 chunk。这会影响 RoPE 的 position id 计算、loss mask，以及与 PP/SP 切分的协调（详见 04）。
 
-## 4. sequence packing：变长数据怎么进模型
+## 5. sequence packing：变长数据怎么进模型
 
 01 到 03 会反复用到 sequence packing 这个概念，它是现代训练组织数据的基本事实，先在这里讲清楚，后面长文负载均衡的讨论才不会悬空。
 
@@ -91,9 +185,9 @@ Megatron 里先后有两代做法，刚好对应两种数据布局：
 - **BSHD 路径（pretrain 默认）**：GPT 数据集本来就把多条文档拼满 `seq_length`，文档边界由 eod token 标出；打开 `--reset-attention-mask` / `--reset-position-ids`（[[megatron-lm:megatron/training/arguments.py#L2945-L2950]]）后，dataloader 在 eod 处重置 attention mask 与 position id（`get_ltor_masks_and_position_ids`，[[megatron-lm:megatron/training/utils/common_utils.py#L337]]）。数据保持 `[b, s]` 的稠密布局，mask 是显式构造的。
 - **THD 路径（SFT 与长上下文）**：变长序列直接拼成一条 token 流，batch 维塌成 `total_tokens`，用 `cu_seqlens` 记录每条 sub-sequence 的边界，交给 TE / FlashAttention 的 varlen kernel——block-diagonal mask 不再显式物化，而由边界信息在 kernel 内隐式实现。THD 布局与 `PackedSeqParams` 的细节见 [TP/SP 章](../02_tp_sp/README.md) 对 packed 格式的说明；Megatron 的 SFT dataset 就走这条路：逐条 conversation pack 进同一序列、position 逐条重计，并断言不再使用 `reset_position_ids`（[[megatron-lm:megatron/training/datasets/sft_dataset.py#L124]]）。
 
-所以「packing 是不是现在 Megatron 训练的标准做法」的答案是肯定的，而且从来都是：pretrain 从 GPT 时代起就是「拼满定长序列、在 eod 处 reset mask」，SFT 与长上下文场景则换成了更彻底的 THD varlen 形态，03 篇会看到的 Megatron-LM Dynamic CP 同样以 packed THD 为前提。真正新的问题不在 packing 本身，而在 **packed 之后 CP 怎么切**：zigzag（§3）假设切分对象是一条从头到尾的 causal 序列，packed 序列里却装着多条文档；而且一条 packed 序列的 attention 工作量正比于各文档长度的平方和 $\sum_j \ell_j^2$，而不是 $(\sum_j \ell_j)^2$——「等 token 数」不再等于「等计算量」。这两个张力正是 03 篇长文负载均衡的全部出发点。
+所以「packing 是不是现在 Megatron 训练的标准做法」的答案是肯定的，而且从来都是：pretrain 从 GPT 时代起就是「拼满定长序列、在 eod 处 reset mask」，SFT 与长上下文场景则换成了更彻底的 THD varlen 形态，03 篇会看到的 Megatron-LM Dynamic CP 同样以 packed THD 为前提。真正新的问题不在 packing 本身，而在 **packed 之后 CP 怎么切**：zigzag（§4）假设切分对象是一条从头到尾的 causal 序列，packed 序列里却装着多条文档；而且一条 packed 序列的 attention 工作量正比于各文档长度的平方和 $\sum_j \ell_j^2$，而不是 $(\sum_j \ell_j)^2$——「等 token 数」不再等于「等计算量」。这两个张力正是 03 篇长文负载均衡的全部出发点。
 
-## 5. Megatron 的 CP 集成
+## 6. Megatron 的 CP 集成
 
 有一个容易忽视但很重要的事实：Megatron core 自身并不实现 ring/a2a attention kernel。`DotProductAttention`（native）直接断言 `context_parallel_size == 1`（[[megatron-lm:megatron/core/transformer/dot_product_attention.py#L57]]），CP 的实际 attention 计算由 TransformerEngine 的 `TEDotProductAttention` 完成（其内部实现了 ring / a2a / 分层三种方式）。Megatron 负责的是以下五件事：
 
@@ -110,7 +204,7 @@ flowchart LR
     ATTN -->|"ring / a2a / a2a+p2p\n(TE 内部)"| OUT["attn out [b, s/cp]"]
 ```
 
-## 6. CP 在整个并行体系里的位置
+## 7. CP 在整个并行体系里的位置
 
 ```
 world = DP × CP × TP × PP
@@ -123,7 +217,7 @@ world = DP × CP × TP × PP
 - **CP 与 TP 正交**：TP 切 head/hidden，CP 切 seq，两者可以同时开启。需要注意的是，Ulysses 的 a2a 同样按 head 切，会与 TP 的 head 切分共同消耗可用的 head 数（02 第 3 节）。
 - **CP 与 PP**：PP 切层，中间 stage 的 batch 里非 metadata 字段为 None，CP 切分会自动跳过（[[megatron-lm:megatron/core/utils.py#L2350]]）。
 
-## 7. 贯穿全文的数值示例
+## 8. 贯穿全文的数值示例
 
 ```
 s = 128K            sequence length
@@ -143,14 +237,14 @@ b = 1
 
 | 文件 | 内容 | 对应代码 / 论文 |
 |---|---|---|
-| `README.md`（本文） | 为什么需要 CP、两大家族（Ring vs Ulysses）总览、zigzag 负载均衡、sequence packing 与变长数据的组织、Megatron 的接入方式、与 TP/SP/DP/PP 的耦合 | `utils.py`, `transformer_config.py` |
+| `README.md`（本文） | 为什么需要 CP、统一抽象（Q-KV 二部任务图与 attention pool）、两大家族（Ring vs Ulysses）总览、zigzag 负载均衡、sequence packing 与变长数据的组织、Megatron 的接入方式、与 TP/SP/DP/PP 的耦合 | `utils.py`, `transformer_config.py` |
 | [01 · Ring Attention](./01_ring_attention.md) | Ring Attention 深入：blockwise online softmax、KV 沿环 P2P、causal 负载不均与 zigzag/striped 修正、通信-计算 overlap、显存分析 | Ring Attention / Blockwise / Striped 论文 |
 | [02 · DeepSpeed-Ulysses](./02_ulysses_a2a.md) | DeepSpeed-Ulysses：用 all-to-all 在 sequence 切分与 head 切分之间转换、复杂度对比、head 数约束、`a2a+p2p` 分层 CP | Ulysses 论文，`mappings.py::_AllToAll` |
-| [03 · 长文负载均衡](./03_long_ctx_load_balance.md) | 长上下文训练的负载均衡：不均衡的三个维度（CP group 内 / CP group 间 / PP 维）、代价模型与 packing 的 Σℓ² 效应、按维度归类的七个工作（Libra、Skrull、WLB-LLM、FlexSP、Megatron-LM Dynamic CP、DCP、ChunkFlow），Ulysses 按 head 切的均衡优势与 ring 的 zigzag 家族 | 七篇论文/博客的算法与伪代码 |
+| [03 · 长文负载均衡](./03_long_ctx_load_balance.md) | 长上下文训练的负载均衡：不均衡的三个维度（CP group 内 / CP group 间 / PP 维）、代价模型与 packing 的 Σℓ² 效应、按维度归类的八个工作（Libra、Skrull、WLB-LLM、FlexSP、Megatron-LM Dynamic CP、DCP、ChunkFlow、MagiAttention），Ulysses 按 head 切的均衡优势与 ring 的 zigzag 家族及其 dispatch 求解推广 | 八篇论文/博客的算法与伪代码 |
 | [04 · Megatron-LM 实现](./04_megatron_cp_integration.md) | Megatron 工程落地：`get_batch_on_this_cp_rank` 三条切分路径、CP group 构造（常规/分层/hybrid）、TE 传参与 per-microbatch 换组、RoPE 的 CP 处理、hybrid CP 调度器、与 SP/TP/PP 的协同 | [[megatron-lm:megatron/core/utils.py#L2308]], `attention.py`, `hybrid_cp_schedule.py` |
 | [[atlas:docs/parallel/04_cp/cp_lab.ipynb]] | 纯 torch 手写 ring attention（online softmax + 真实 P2P）和 Ulysses（all-to-all）两条路径，CPU/gloo 本地多进程，逐元素对齐 full attention，并演示 zigzag 负载均衡 | —— |
 
-建议按顺序阅读：本文先建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、以负载均衡的维度为线索调研长上下文训练的一批工作，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），最后通过 lab 亲手实现两条路径。
+建议按顺序阅读：本文先用统一抽象建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、以负载均衡的维度为线索调研长上下文训练的一批工作，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），最后通过 lab 亲手实现两条路径。
 
 ## 参考代码
 

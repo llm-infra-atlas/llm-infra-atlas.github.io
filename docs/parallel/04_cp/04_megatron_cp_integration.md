@@ -33,7 +33,7 @@ else:                                            # 纯 pretrain
 
 ### 1.1 pretrain：zigzag 切分
 
-`get_pretrain_batch_on_this_cp_rank`（[[megatron-lm:megatron/core/utils.py#L2308-L2366]]）就是 README 第 3 节介绍的 zigzag，完整实现只有几行：
+`get_pretrain_batch_on_this_cp_rank`（[[megatron-lm:megatron/core/utils.py#L2308-L2366]]）就是 README 第 4 节介绍的 zigzag，完整实现只有几行：
 
 ```python
 # utils.py:2352-2364

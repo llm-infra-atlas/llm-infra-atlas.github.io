@@ -1,6 +1,6 @@
 # 02 · DeepSpeed-Ulysses
 
-Ring（01）的思路是序列切开之后把 KV 沿环搬动。Ulysses 走另一条路：attention 在 head 维上天然并行（不同 head 之间互不影响），因此在计算 attention 时，可以把数据从「按 seq 切」转成「按 head 切」，每张卡在本地计算完整序列、部分 head 的 attention，算完再切回去。两次转换都通过 all-to-all 完成。
+用 README 第 2 节的抽象来说，Ring（01）是「Q 不动、KV 流动」的调度；Ulysses 则是「head repartition」：attention 在 head 维上天然并行（不同 head 之间互不影响），因此在计算 attention 时，可以把数据从「按 seq 切」转成「按 head 切」，每张卡在本地计算完整序列、部分 head 的 attention，算完再切回去。两次转换都通过 all-to-all 完成。
 
 > 论文：Jacobs et al., *DeepSpeed Ulysses: System Optimizations for Enabling Training of Extreme Long Sequence Transformer Models*, 2023, [arXiv:2309.14509](https://arxiv.org/abs/2309.14509)。
 > 对应 Megatron：`cp_comm_type="a2a"`（[[megatron-lm:megatron/core/transformer/transformer_config.py#L899]]），底层 all-to-all 原语见 `mappings.py:420 _AllToAll`。

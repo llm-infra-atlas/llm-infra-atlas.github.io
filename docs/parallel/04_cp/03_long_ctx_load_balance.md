@@ -13,6 +13,7 @@
 - Megatron-LM Dynamic CP（[NVIDIA Technical Blog, 2026](https://developer.nvidia.com/blog/speeding-up-variable-length-training-with-dynamic-context-parallelism-and-nvidia-megatron-core/)）
 - DCP（HKU + AWS，SOSP 2025，[arXiv:2510.10620](https://arxiv.org/abs/2510.10620)）
 - Libra（UCAS + Alibaba + NUS，[arXiv:2607.23250](https://arxiv.org/abs/2607.23250)）
+- MagiAttention（SandAI 开源，Apache-2.0；[GitHub](https://github.com/SandAI-org/MagiAttention)，[技术 Blog](https://sandai-org.github.io/MagiAttention/docs/main/blog/magi_attn.html)；生产落地见 MAGI-1 技术报告 [arXiv:2505.13211](https://arxiv.org/abs/2505.13211) §4.1.2）
 
 ---
 
@@ -38,7 +39,7 @@ $$
 
 以 Skrull 给出的逐层公式为例：$F(s) = (20h^2 + 4h\,h_{kv})\,s + 4h\,s^2$，其中 $h$ 是 hidden size，$h_{kv}$ 是 KV 的 hidden 维。线性项来自 QKV projection、MLP、LayerNorm 这些逐 token 的算子，二次项来自 attention 的 $QK^{\top}$ 与 $PV$。用 Qwen2.5-0.5B 实测拟合一下就能感受两项的悬殊：序列从 4K 增长到 32K（8 倍）时，计算量增长约 30 倍，而显存只增长约 4 倍。
 
-sequence packing（把多条文档拼成定长序列，Megatron 里的两代形态见 [README 第 4 节](./README.md)）让事情变得更微妙。把若干条文档（长度记为 $\ell_1, \dots, \ell_k$）pack 成一条定长序列之后，文档之间有 attention mask 隔开、互不 attend，因此一条 packed 序列的 attention 工作量是
+sequence packing（把多条文档拼成定长序列，Megatron 里的两代形态见 [README 第 5 节](./README.md)）让事情变得更微妙。把若干条文档（长度记为 $\ell_1, \dots, \ell_k$）pack 成一条定长序列之后，文档之间有 attention mask 隔开、互不 attend，因此一条 packed 序列的 attention 工作量是
 
 $$
 W_{\text{attn}} \propto \sum_{j=1}^{k} \ell_j^2
@@ -50,7 +51,7 @@ $$
 
 第一个维度发生在 CP group 内部：同一条（packed）序列切到 `cp` 张卡上之后，各 rank 算得是否一样多。这里的结论先行：**按 seq 切（ring）天生不均衡，按 head 切（Ulysses）天生均衡**。
 
-01 第 4 节已经展示过 ring 的问题：causal mask 下每个 chunk 的计算量跟它在序列中的位置挂钩，越靠后的 chunk 要 attend 的 KV 越多，各 rank 的计算量逐位线性递增。经典的修正是 zigzag 切分——把序列切成 $2\mathrm{cp}$ 块、每个 rank 取一前一后两块配对。但 zigzag 有一个常被忽略的前提：**它只对「切分对象是一条完整序列」是均衡的**。packed 序列里装着多条文档，对整条序列做一次 zigzag，并不能保证每个 rank 在每一条文档内部都拿到对称的轻重块，CP group 内各 worker 的 attention 工作量依然参差不齐（WLB-LLM §3.1 正是从指出这一点开篇的）。围绕这个缺陷的各种细化方案（per-document sharding 等）放到 §4.3 讲。
+01 第 4 节已经展示过 ring 的问题：causal mask 下每个 chunk 的计算量跟它在序列中的位置挂钩，越靠后的 chunk 要 attend 的 KV 越多，各 rank 的计算量逐位线性递增。经典的修正是 zigzag 切分——把序列切成 $2\mathrm{cp}$ 块、每个 rank 取一前一后两块配对。但 zigzag 有一个常被忽略的前提：**它只对「切分对象是一条完整序列」是均衡的**。packed 序列里装着多条文档，对整条序列做一次 zigzag，并不能保证每个 rank 在每一条文档内部都拿到对称的轻重块，CP group 内各 worker 的 attention 工作量依然参差不齐（WLB-LLM §3.1 正是从指出这一点开篇的）。围绕这个缺陷的各种细化方案（per-document sharding、通用 dispatch 求解）放到 §4.3、§4.4 讲。
 
 除了长度和位置，还有一类更隐蔽的不均来自 mask 本身。zigzag 是为 causal mask 设计的；当 workload 使用 sliding-window、blockwise、shared-question 这类结构化 mask（在 RLHF、ICL 场景越来越常见）时，ring 的固定通信模式会与 mask 形状脱节，传输大量接收方根本用不到的 KV block。DCP 论文给了一个量化的例子：在 shared question mask、4 设备 ring 的配置下，48 个 KV block 的传输里有 38 个是冗余的。
 
@@ -64,13 +65,15 @@ Ulysses 则完全没有这个维度的问题：每卡计算完整序列在 $h/\m
 
 第二个维度发生在 CP group 之间，也就是 DP 维。即使每个 CP group 内部已经均衡，各个 DP replica 分到的 packed 序列不一样，attention 工作量（正比于各自的 $\sum \ell_j^2$）就不同。梯度同步是集合通信，组的完成时间等于组内最慢者的时间，所以各 replica 的工作量差异直接转化为 gradient sync 时的互相等待。Libra 报告了一个很有冲击力的数字：Qwen3-Turbo、1M packed 序列、CP=16 的配置下，DP 从 1 扩到 16（16 卡扩到 256 卡），吞吐只提升了 4.42 倍，扩展效率仅 27.6%——瓶颈不在通信带宽，而在每个 replica 分到的计算本来就不一样多。这是本篇 §2、§3 两节要解决的主战场。
 
+在展开之前，有一个前提值得点明：**DP × CP 中的 DP 是一个可以抹平的维度**。支撑这一点的事实有两个。第一，attention 是 parameter-free 算子——任何一张卡拿着任意一段 Q/K/V 和 mask 都能算出它的任意一块（README 第 2 节的任务图正是建立在这一点上），而 DP replica 之间持有的又是完全相同的权重，因此没有任何一块计算「必须」留在某个 replica 上。第二，CP 与 DP 本来就共享同一个梯度规约域（README 第 7 节），DP × CP 网格里的所有 worker 每一步结束时都要一起同步，它们在收敛语义上本来就是绑在一起的。所以从负载均衡的视角看，一个 DP × CP 网格就是一池子同质的 worker，「哪条序列属于哪个 replica」只是静态数据划分留下的人为边界，而不是硬件或语义上的硬约束。§2、§3 的全部手段本质上都在抹平这条边界：Libra 把若干 replica 聚成一个 pool 共同均衡（还专门论证了 pool 该多大），Skrull 在 DP 全局范围内调度数据，Megatron-LM Dynamic CP 更彻底，用 THD 布局把 DP × CP 直接摊平成一池 varlen packed 序列（§2.4）。区别只在抹平的**范围**（整个 GBS 还是有界 pool）和**粒度**（序列、tile 还是 block）——甚至可以说，CP group 间均衡的收益上限，正是由你敢把这条边界抹多平决定的。
+
 ### 1.4 PP 维：micro-batch 不等长变成 bubble
 
 第三个维度在 PP。micro-batch 之间工作量不等，会直接变成 pipeline 里的 bubble。ChunkFlow 估算过一个例子：4 条变长序列、PP=4 的配置，直接套标准 1F1B 调度，bubble 占单步时间的比例高达 57.14%，而同配置下等长序列的理论值只有 42.8%。而且 PP 是生产者-消费者结构，整条流水线的 critical path 由最重的那个 micro-batch 决定，它会把前两个维度上的不均衡进一步放大。这一维的专门讨论见 §5。
 
 ### 1.5 总览
 
-把七项工作摆在一起看，它们解的其实是同一个问题。用最优化的语言写出来，就是：
+把八项工作摆在一起看，它们解的其实是同一个问题。用最优化的语言写出来，就是：
 
 $$
 \min_{\text{placement}} \ \max_{r \in \text{ranks}} \ T_r
@@ -88,6 +91,7 @@ $$
 | Megatron-LM Dynamic CP | CP group 间 | repack + 动态并行度 | 是（BSHD → THD） | packed 序列 |
 | DCP | CP group 间（兼稀疏 mask） | 计算重划分 | 否 | attention block |
 | ChunkFlow | PP 维 | 数据重组（等长 chunk） | 是 | chunk（等长） |
+| MagiAttention | CP group 内（兼异构 mask） | dispatch 求解（chunk 任意置换）+ 按需通信（GroupCast/GroupReduce） | 否 | 等长 chunk（`chunk_size` 可调） |
 
 在分维度展开之前，还有三个贯穿所有工作的共性值得先点出来，因为它们解释了「为什么这些系统能落地」而不只是纸面算法。第一，cost model 是所有工作的共同地基：每个系统都要先用序列长度估算每条样本的计算、显存和通信代价，也就是 §1.1 那组公式，差别只在精度。第二，求解全部放在 CPU 上异步完成：调度算法都跑在 data loader 或 sampler 侧的 CPU 进程里，与 GPU 训练流水线式地 overlap，做到对训练循环近乎零开销。第三，通信组预建、运行时选用：凡是动并行度的路线，都在初始化时把各种大小（通常取 2 的幂）的子 group 全部建好，运行时只按调度结果取用，每张卡最多属于 $\log_2 N$ 个组，数量完全可控。
 
@@ -222,7 +226,7 @@ s.t. Time({s_k, A_kp}; d_p) ≤ C,     ∀p         # 各 group 的执行时间�
 
 ### 3.2 细粒度 attention 调度：tile 级放置
 
-动态并行度的分配单位仍然是整条序列，通信模式还是 ring 或 a2a 的固定形态。再往下走一层的理论基础是：attention 是一个 parameter-free 算子，给定 Q/K/V、mask 和执行元数据之后，任何一张卡都能执行它的任意一块。既然如此，就不必以序列为单位做分配，可以把 attention 的计算切成细粒度的 block 或 tile，逐个决定放在哪张卡上；通信模式也不再是预设的拓扑，而是由 placement 导出。这是收益上限最高、侵入也最深的一条路线，Libra 的 TAP 和 DCP 都走到了这一层，且都可以在变长 FlashAttention + all-to-all 的现成件上实现，不需要自研 attention kernel。
+动态并行度的分配单位仍然是整条序列，通信模式还是 ring 或 a2a 的固定形态。再往下走一层的理论基础是：attention 是一个 parameter-free 算子，给定 Q/K/V、mask 和执行元数据之后，任何一张卡都能执行它的任意一块。既然如此，就不必以序列为单位做分配，可以把 attention 的计算切成细粒度的 block 或 tile，逐个决定放在哪张卡上；通信模式也不再是预设的拓扑，而是由 placement 导出。这是收益上限最高、侵入也最深的一条路线，Libra 的 TAP 和 DCP 都走到了这一层，且都可以在变长 FlashAttention + all-to-all 的现成件上实现，不需要自研 attention kernel。换句话说，README 第 2 节那张 Q-KV 二部任务图在这里被完全打开：调度从「选算法」变成了「解 placement」。
 
 **Libra TAP（Tiled Attention Pooling）** 作用在 §2.1 的有界 pool 内部——VRSP 把 pool 之间拉平之后，pool 内各 DP instance 之间残余的不均衡由它压掉。TAP 把 core attention 沿 sequence 和 head 两个维度切成 SH-Tile 作为最小放置单元，每个 tile 的 FLOPs 按精确的 causal query-key 对数计费，然后用一个通信感知的贪心把 tile 逐个放到 pool 内的 worker 上：在不超软负载上限的候选 worker 里，优先选通信增量最小的——所谓通信增量小，是指目的地已经驻留了这个 tile 需要的 KV（不用重复传输），或者目的地本来就是 Q 的归属 worker（省去 Q dispatch 和 output return）。放置时优先沿 head 维切分而不是 sequence 维，原因与 §4.1 将展开的 kernel 效率观察相同：等宽的 head chunk 在字节量和执行结构上完全一致，而 sequence 维的 fixed-token chunk 沿 causal 序会越来越贵。执行侧，tile 迁移引入的 dispatch 和 return 通信沿 head 维切成若干等宽 chunk、与 FlashAttention 计算流水 overlap，实现上直接基于未修改的 varlen FlashAttention kernel 加 `all_to_all`，不需要自研 attention kernel。
 
@@ -289,6 +293,33 @@ ring 按 seq 切，causal 下每个 chunk 的计算量取决于它在序列中�
 
 值得注意的是，WLB-LLM 还揭示了一个有普遍意义的张力：**负载均衡和 kernel 效率会打架**。per-doc sharding 把 CP 不均完全消除了，但它产生的大量短 chunk 会伤害 attention kernel 本身的效率（原因正是 §4.1 引用的那组实测）。它的应对是运行时逐 micro-batch 在 per-seq 和 per-doc 两种切法之间自适应选择：分别估算两种切法下 kernel 的等效 FLOPs（短 chunk 按 tile 向上取整计入浪费），取预测延迟更低者，实测比任何单一策略都好 3.4%–7.5%。「最均衡的切法不一定最快」这个结论，与 §4.1 的观察互为表里——按 head 切之所以吸引人，恰恰因为它是少数能让两个目标同向的切法。最终在 7B–70B、64K/128K 的实验上，WLB-LLM 平均加速 1.23 倍，128K 上 1.30 倍。
 
+### 4.4 MagiAttention：组内切分变成可求解的 dispatch 问题
+
+> 维度：CP group 内（兼异构 mask）。packing：不改。决策粒度：等长 chunk（`chunk_size` 可调）。
+
+MagiAttention 是 SandAI 为视频生成模型 MAGI-1（24B、上下文最长 4M token，[arXiv:2505.13211](https://arxiv.org/abs/2505.13211)）的生产训练开发的分布式 attention，以 Apache-2.0 开源（[GitHub](https://github.com/SandAI-org/MagiAttention)）。放在本节是因为它把 zigzag 家族的思路做了本质推广：**组内切分不再是从几种固定模式（顺序、zigzag、per-document）里挑一个，而是一个逐 case 求解的组合优化问题**。动机直接来自 MAGI-1 的 workload：block-causal mask 叠加 NaViT 式 Patch-and-Pack 产生的变长样本，使 mask 形状既不规则又随 micro-batch 变化。官方对 zigzag 类方案的批评相当直白：定制 zigzag 只对特定的 varlen causal 模式有效，还会带来碎片化、过量 padding 和 kernel 降速，并且无法泛化到 MAGI-1 使用的 varlen block-causal mask。
+
+![Ring Attention 的几种定制切分策略](assets/arxiv/2505.13211_magiattn_load_balance.png)
+
+> 图：ring 家族在四种 mask 下的定制切分（颜色表示 chunk 分到的 rank）：(a) full mask 顺序切分；(b) causal 用 zigzag 配对；(c) varlen full 按样本顺序切；(d) varlen causal 逐样本 zigzag——切分图案已经相当破碎，而这还只是几种规则 mask；mask 一旦更不规则，手工构造对称切分这条路就走不下去了。（MagiAttention Blog, Fig.2；[SandAI](https://sandai-org.github.io/MagiAttention/docs/main/blog/magi_attn.html)）
+
+MagiAttention 的应对是把问题拆成三层耦合设计：mask 的可分发表示、dispatch 求解、以及能在任意子 mask 上高效执行的 kernel。
+
+第一层是 **mask 表示**。任意不规则 mask 被分解为若干 AttnSlice——每个是一个 (QRange, KRange, MaskType) 三元组，描述一块连续 query-key 矩形区域内的子 mask；MaskType 只有 FULL / CAUSAL / INV-CAUSAL / BI-CAUSAL 四种，但可以任意重叠组合，从 varlen causal 到 varlen block-causal 都能紧凑表达。关键在于这个表示在跨 rank 重排之后仍然合法，这是「chunk 可以任意置换」的前提。
+
+第二层是 **dispatch solver**。沿 query 维把全局序列等长切成 $n$ 个 chunk——等长是为了保住非 attention 部分的 token 级均衡；每个 chunk 按 mask 算出自己的面积（该 chunk 内实际要算的 query-key 对数）。然后把 $n$ 个 chunk 以**任意排列**装进 $\mathrm{cp\_size}$ 个桶，每桶恰好 $n/\mathrm{cp\_size}$ 个，目标是最小化最大桶面积：
+
+$$
+f^{*}=\arg\min_{f}\ \max_{j}\ \mathrm{SumArea}(B_j)
+\qquad \text{s.t.}\quad |B_j|=n/\mathrm{cp\_size}
+$$
+
+注意均衡的对象是 **mask 面积（二次项），而约束保住的是 token 数（线性项）**——§1.1 代价模型的两项在这里各司其职。zigzag 只是这个解空间里一个手工构造的对称点；mask 不规则之后最优置换没有封闭形式，于是用一个 $O(n\log n)$ 的贪心逼近（min-heap：chunk 按面积降序，依次放进当前负载最小且未满的桶）。
+
+第三层是**执行**。通信上彻底放弃 ring 拓扑：ring P2P「每步全员参与」的假设在稀疏 mask 下代价很高——causal 下约 25% 的 KV 传输是冗余的，varlen block-causal 下超过 30%（极端情况是一块只有 host rank 需要的 KV 也要环游全组）。MagiAttention 改用 **GroupCast / GroupReduce**：前向把每块 KV 只发给真正需要它的 rank 子集，反向把分散在各处的 partial dKV 按需归约回 host rank，前后向通信量做到 zero-redundant（实现从 AlltoAll-v 原型演进到基于 DeepEP 的 native group collective kernel）。计算侧是自研的 **FFA（Flex-Flash-Attention）** kernel（基于 FA3，Hopper 专用）：以 AttnSlice 为并行粒度，跨 rank 的 partial 结果用 atomic 归约合并；前后向各用一条多阶段流水线把通信藏进 FFA 计算，段数由 `overlap_degree` 控制。用 README 第 2 节的语言说，这是任务图上「Q 不动、KV 流动」的调度，但流动的拓扑由 mask 逐 case 导出，而不是一个固定的环。
+
+效果与成熟度：官方 benchmark 把各家 CP 后端统一集成进 Megatron（Hopper 上统一 FA3 kernel），cp=8→64、每卡固定 8K token、总长随 cp 线性放大到 512K，varlen causal 下 MagiAttention 接近线性扩展，吞吐约为最强基线的 1.2–1.9 倍、ring P2P 的 5 倍以上；它已在 MAGI-1 的生产训练中使用，并提供 Megatron-LM / FSDP / HF Transformers 集成。局限同样要说清楚：均衡的前提是全局 mask 已知且各层共享（static attn solver），逐层动态 mask 的 dynamic solver 仍在开发中；贪心解不保证最优；默认实现因 atomic 归约不保证逐位确定（v1.0.3 起提供 deterministic mode）；而且它是这批工作里唯一需要自研 attention kernel 的一个，侵入面最深。
+
 ## 5. PP 维均衡：ChunkFlow
 
 > 维度：PP 维（micro-batch 之间的 bubble）。packing：重组为等长 chunk。
@@ -322,17 +353,17 @@ else:
 
 ## 6. 横向比较与选型
 
-七个工作按维度归位之后，再提炼几条跨工作的规律。
+八个工作按维度归位之后，再提炼几条跨工作的规律。
 
 | 维度 | 观察 |
 |---|---|
-| cost model 精度 | ChunkFlow（时间 ∝ 长度）< WLB-LLM / Libra（$\sum \ell_j^2$）< FlexSP / Skrull（完整的 $\alpha W+\beta$，区分链路带宽）。模型越准，均衡的上限越高，但 profiling 成本和硬件耦合也越重 |
-| 求解开销 | 全部做到了与 GPU 训练 overlap：贪心类 20ms 级（WLB-LLM）、纯 CPU 近零（Skrull）、MILP 5–15s（FlexSP）、hypergraph < 10s/batch（DCP）、LPT $O(D\log D)$（Libra） |
-| 数学等价性 | 完全等价：Skrull / FlexSP / Megatron-LM Dynamic CP（只改执行划分）；改变 step 样本多重集：WLB-LLM 的 outlier delay；数值次序变化：DCP / Libra 的 tile 迁移 |
-| 侵入面 | 数据侧（Libra VRSP / Skrull / WLB-LLM / ChunkFlow）→ 调度 + 通信组（FlexSP / Megatron-LM Dynamic CP）→ attention 执行重写（DCP / Libra TAP），收益上限与侵入深度同向递增 |
-| 落地成熟度 | 生产级：Megatron-LM Dynamic CP（Megatron Core）、Libra（Qwen 生产集群）；研究原型：FlexSP（Hetu-Galvatron 开源）、DCP；内部系统：WLB-LLM、ChunkFlow、Skrull |
+| cost model 精度 | ChunkFlow（时间 ∝ 长度）< WLB-LLM / Libra / MagiAttention（$\sum \ell_j^2$，后两者精确到 tile/chunk 的 mask 面积）< FlexSP / Skrull（完整的 $\alpha W+\beta$，区分链路带宽）。模型越准，均衡的上限越高，但 profiling 成本和硬件耦合也越重 |
+| 求解开销 | 全部做到了与 GPU 训练 overlap：贪心类 20ms 级（WLB-LLM）、min-heap $O(n\log n)$（MagiAttention）、纯 CPU 近零（Skrull）、MILP 5–15s（FlexSP）、hypergraph < 10s/batch（DCP）、LPT $O(D\log D)$（Libra） |
+| 数学等价性 | 完全等价：Skrull / FlexSP / Megatron-LM Dynamic CP（只改执行划分）；改变 step 样本多重集：WLB-LLM 的 outlier delay；数值次序变化：DCP / Libra 的 tile 迁移、MagiAttention 的 atomic 归约（可选 deterministic mode） |
+| 侵入面 | 数据侧（Libra VRSP / Skrull / WLB-LLM / ChunkFlow）→ 调度 + 通信组（FlexSP / Megatron-LM Dynamic CP）→ attention 执行重写（DCP / Libra TAP）→ 自研 attention kernel（MagiAttention），收益上限与侵入深度同向递增 |
+| 落地成熟度 | 生产级：Megatron-LM Dynamic CP（Megatron Core）、Libra（Qwen 生产集群）、MagiAttention（MAGI-1 生产训练，Apache-2.0 开源）；研究原型：FlexSP（Hetu-Galvatron 开源）、DCP；内部系统：WLB-LLM、ChunkFlow、Skrull |
 
-组合关系上，数据侧路线与动态并行度路线基本正交——完全可以先做 workload-aware packing，再对每个 micro-batch 选择 cp_size，两者的收益能够叠加。DCP 与 Libra TAP 都深入 attention 内部，直接组合的意义不大，但思想上是互补的：DCP 强在处理任意形状的 mask，Libra 强在给出了均衡范围的理论界，并且经过了大规模生产验证。CP group 内部的选择则是另一个正交的决定：能用 Ulysses 的场景（cp 不超过 KV head 数），按 head 切同时拿到均衡和 kernel 效率；必须上 ring 的场景，zigzag 及其 per-document 细化是必修项。最后还要重复一遍那个共同的前提：所有这些机制的收益都来自数据分布的不均匀性，在长度齐整的 pretrain 语料上，它们多半只剩下开销。
+组合关系上，数据侧路线与动态并行度路线基本正交——完全可以先做 workload-aware packing，再对每个 micro-batch 选择 cp_size，两者的收益能够叠加。DCP 与 Libra TAP 都深入 attention 内部，直接组合的意义不大，但思想上是互补的：DCP 强在处理任意形状的 mask，Libra 强在给出了均衡范围的理论界，并且经过了大规模生产验证；MagiAttention 在「支持任意 mask」上与 DCP 目标相近，但主战场在 CP group 内，且选择了自研 kernel 这条更深的路线。CP group 内部的选择则是另一个正交的决定：能用 Ulysses 的场景（cp 不超过 KV head 数），按 head 切同时拿到均衡和 kernel 效率；必须上 ring 的场景，zigzag 及其 per-document 细化是必修项；而当 mask 超出 plain causal（视频生成、多模态这类 block-causal / 结构化 mask）时，固定模式家族整体让位于 MagiAttention 这类可求解的 dispatch 方案。最后还要重复一遍那个共同的前提：所有这些机制的收益都来自数据分布的不均匀性，在长度齐整的 pretrain 语料上，它们多半只剩下开销。
 
 ---
 
@@ -345,5 +376,6 @@ else:
 - NVIDIA, *Speeding Up Variable-Length Training with Dynamic Context Parallelism and NVIDIA Megatron Core*, 2026. [NVIDIA Technical Blog](https://developer.nvidia.com/blog/speeding-up-variable-length-training-with-dynamic-context-parallelism-and-nvidia-megatron-core/)
 - Jiang, Cai, Tian et al., *DCP: Addressing Input Dynamism in Long-Context Training via Dynamic Context Parallelism*, SOSP 2025. [arXiv:2510.10620](https://arxiv.org/abs/2510.10620)
 - Wang, Yuan, Yang et al., *Libra: Taming Attention Workload Skew in Long-Context LLM Training with Bounded Sequence Pool*, 2026. [arXiv:2607.23250](https://arxiv.org/abs/2607.23250)
+- Tao, Huang et al., *MagiAttention: A Distributed Attention Towards Linear Scalability for Ultra-Long Context, Heterogeneous Mask Training*, SandAI, 2025（Apache-2.0 开源）. [GitHub](https://github.com/SandAI-org/MagiAttention)，[技术 Blog](https://sandai-org.github.io/MagiAttention/docs/main/blog/magi_attn.html)；生产落地见 MAGI-1 技术报告 §4.1.2，[arXiv:2505.13211](https://arxiv.org/abs/2505.13211)
 
 负载均衡的算法层面已经理清，接下来的问题是这些思想在真实框架里长什么样。下一篇[04 · Megatron-LM 实现](./04_megatron_cp_integration.md)会回到代码：zigzag/THD/hybrid 三条 batch 切分路径、`PackedSeqParams` 如何携带 per-microbatch 的 CP 组、`BalancedCPScheduler` 的调度算法，以及它们与 §2.4/§3.1 的对应关系。
