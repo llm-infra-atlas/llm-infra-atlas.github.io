@@ -39,32 +39,44 @@ $$
 
 ## 2. Online softmax
 
-softmax 需要一行的全局 $\max$ 和 $\sum \exp(\cdot)$，看起来必须先拿到完整的一行 $S$。FA 借用 **online softmax**（Milakov & Gimelshein 2018），把它改写成可流式累加的 recurrence。
+softmax 对一行 $S$ 的计算是
 
-把一行 $S$ 的列切成块 $S^{(1)}, S^{(2)}, \dots$。维护三个 running 状态（以下都是「一行」的视角，实际是 $[B_r]$ 维向量并行处理）：
+$$
+P_{ij} = \frac{\exp(S_{ij})}{\sum_{j'} \exp(S_{ij'})}
+$$
 
-```
-m  = 到目前为止见过的最大 logit（running row max）
-l  = 到目前为止的 Σ exp(·)（running sum，已按当前 m 缩放）
-O  = 到目前为止的 Σ exp(·)·V（加权 V 累加，已按当前 m 缩放）
-```
+数值稳定的实现要先扫一遍全行求 $m = \max_{j'} S_{ij'}$，再以 $m$ 为基准求分母 $\sum_{j'} \exp(S_{ij'} - m)$。两遍扫描都依赖完整的一行，这和 tiling 直接冲突：块是逐块到来的，任何时刻手里只有一行的若干列。FA 借用 **online softmax**（Milakov & Gimelshein 2018）解决这个矛盾——不等到全行凑齐，每来一块就把它的贡献累加进 running 状态，所有块处理完时，结果恰好等于对整行做了一次性 softmax。
 
-每来一个新块 $S^{(j)}$（对应 $K^{(j)}, V^{(j)}$）：
+先按「一行」的视角来写（kernel 里一个 threadblock 同时处理一个 Q 块的所有行，每行独立维护同一套状态，所以实现里这些状态是向量而非标量，见第 3 节）。把一行的列切块，每块 $B_c$ 列，维护三个 running 状态：
 
-```
-m_new = max(m, rowmax(S^{(j)}))
-p     = exp(S^{(j)} - m_new)                 # 以新 max 为基准的概率（未归一）
-α     = exp(m - m_new)                        # 旧状态的缩放因子（修正：之前用旧 m 算的）
-l     = α · l + rowsum(p)
-O     = α · O + p · V^{(j)}                   # 旧累加先乘 α 修正，再加新块贡献
-m     = m_new
-```
+- $m$：到目前为止见过的最大 logit（running row max）；
+- $l$：到目前为止的未归一分母 $\sum_{\mathrm{seen}} \exp(s - m)$，**以当前 $m$ 为基准**；
+- $O$：到目前为止的未归一分子 $\sum_{\mathrm{seen}} \exp(s - m)\, v$，同样以当前 $m$ 为基准。
 
-处理完所有块后做一次 $O = O / l$，即得正确结果。
+注意 $l$ 和 $O$ 都不是裸的累加和，而是带着基准 $m$ 的。新块 $S^{(j)}$（对应 $K^{(j)}, V^{(j)}$）到来时，基准可能抬高，旧累加要先换算到新基准，再加上新块的贡献：
 
-**为什么这样做是对的**：设真实全局 max 是 $m^*$。任意时刻 $O$ 存的都是 $\sum_{\mathrm{seen}} \exp(s - m)\, v$，以当前 $m$ 为基准。当 $m$ 从旧值更新到 $m_{\text{new}}$ 时，所有旧项的基准需要从 $\exp(s - m_{\text{old}})$ 变成 $\exp(s - m_{\text{new}}) = \exp(s - m_{\text{old}}) \cdot \exp(m_{\text{old}} - m_{\text{new}})$，即整体乘 $\alpha = \exp(m_{\text{old}} - m_{\text{new}})$。所以 $\alpha \cdot O$ 把旧累加搬到新基准上，再加上新块的贡献即可。最后除以 $l$ 完成归一。这个累加过程对块的处理顺序不敏感（只要每块恰好处理一次），这正是 Ring Attention 能把它扩展成跨卡环形循环的原因。
+$$
+\begin{aligned}
+m_{\mathrm{new}} &= \max\!\left(m,\ \mathrm{rowmax}\!\left(S^{(j)}\right)\right) \\
+\alpha &= \exp(m - m_{\mathrm{new}}) \\
+p &= \exp\!\left(S^{(j)} - m_{\mathrm{new}}\right) \\
+l &\leftarrow \alpha \cdot l + \mathrm{rowsum}(p) \\
+O &\leftarrow \alpha \cdot O + p\, V^{(j)} \\
+m &\leftarrow m_{\mathrm{new}}
+\end{aligned}
+$$
 
-**数值稳定性**：减 $m_{\text{new}}$ 保证 $\exp$ 的指数不超过 0，永不上溢；$\alpha = \exp(m_{\text{old}} - m_{\text{new}}) \le 1$（因为 $m_{\text{new}} \ge m_{\text{old}}$），也不会上溢。这和标准的 "subtract max" 技巧等价，只是 max 是流式逼近出来的。
+处理完所有块后做一次 $O \leftarrow O / l$，即得正确结果。
+
+**为什么要乘 $\alpha$**：换基准只需要一次乘法。旧累加里的每一项是 $\exp(s - m_{\mathrm{old}})$，搬到新基准上就是
+
+$$
+\exp(s - m_{\mathrm{old}}) = \exp(s - m_{\mathrm{new}}) \cdot \exp(m_{\mathrm{old}} - m_{\mathrm{new}}) = \exp(s - m_{\mathrm{new}}) \cdot \alpha
+$$
+
+即基准每抬高一次，全部旧贡献统一乘一个折扣因子 $\alpha$，再加上新块按新基准算出的贡献。看一个具体的数：设当前 $m = 3$、$l = 10$，新块的 rowmax 是 $5$，则 $m_{\mathrm{new}} = 5$、$\alpha = e^{-2} \approx 0.135$，旧的 $l$ 先折成 $1.35$ 再加新块的 rowsum，$O$ 同理。由于 $m$ 单调不减，$\alpha \le 1$ 恒成立——旧贡献只会被等比缩小，不会被放大。整个累加对块的处理顺序不敏感（只要每块恰好处理一次），这正是 Ring Attention 能把它扩展成跨卡环形循环的原因。
+
+**数值稳定性**：减 $m_{\mathrm{new}}$ 保证 $\exp$ 的指数不超过 0，永不上溢；$\alpha \le 1$ 也不会上溢。这和标准的 "subtract max" 技巧等价，只是 max 是流式逼近出来的。
 
 ### 实现简化：直接维护 LSE
 

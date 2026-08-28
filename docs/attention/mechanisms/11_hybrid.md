@@ -11,13 +11,13 @@
 ## 1. 为什么需要混合
 
 ```
-纯 sparse：  KV cache 仍随 L 增长（要留着供打分）
+纯 sparse：  KV cache 仍随 N 增长（要留着供打分）
              表达力上限 = full attention（只做选择，不做压缩）
 
 纯 linear：  状态 O(1)，但 finite-state capacity 硬约束
              copying / 精确检索任务上理论弱于 Transformer（Jelassi et al. 2024）
 
-纯 full：    O(L²) 计算 + O(L) cache，1M 上下文不可行
+纯 full：    O(N²) 计算 + O(N) cache，1M 上下文不可行
 ```
 
 混合的逻辑很朴素：**让大多数层便宜，少数层保留全部能力**。少数全局层负责跨全上下文的精确检索，多数便宜层负责局部建模和信息压缩。
@@ -228,8 +228,8 @@ Kimi：   from scratch 训练 hybrid
 | | ① 基础（head sharing） | ② sparse | ③ linear |
 |---|---|---|---|
 | **改什么** | KV 的表示 | mask（选择性跳过） | 递归（有损压缩） |
-| **每 token 状态** | $2 h_{\mathrm{kv}} d_h \to d_c + d_h^R$ | 不变（仍需全 cache） | **$d_k d_v$，与 $L$ 无关** |
-| **decode 计算** | $O(Ld)$ | $O(kd)$ | **$O(d_k d_v)$** |
+| **每 token 状态** | $2 h_{\mathrm{kv}} d_h \to d_c + d_h^R$ | 不变（仍需全 cache） | **$d_k d_v$，与 $N$ 无关** |
+| **decode 计算** | $O(Nd)$ | $O(kd)$ | **$O(d_k d_v)$** |
 | **表达力上限** | = full attention | = full attention（只做选择） | **可超过**（delta rule + 非对角转移） |
 | **主要风险** | MQA 的微调不稳定 | 打分器质量 / post-hoc 剪枝损失 | finite-state capacity / 低精度敏感 |
 | **代表** | MLA（DeepSeek-V2/V3、Kimi K2） | NSA → DSA → CSA/HCA | GLA → GDN → **KDA**（Kimi Linear/K3） |

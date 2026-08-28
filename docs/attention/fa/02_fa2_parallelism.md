@@ -50,8 +50,8 @@ dim3 grid(num_m_block, params.b, params.h);          // ← x 维是 Q 块数！
 
 这是 FA2 最重要的一处改动，原因在于：
 
-- 并行度从 $b \cdot h$ 变成 $b \cdot h \cdot (N / B_r)$。`b=1, h=32, N=8K, Br=128` 时，block 数从 32 个变成 `32·64 = 2048` 个，远超 SM 数量，占用率因此拉满。
-- 这是 forward 的并行方式。**为什么可以沿 Q（$M$ 维）并行，而不能沿 KV（$N$ 维）并行**：每个 Q 块的 online softmax 是独立的（各自维护自己的 $(m, l, O)$），互不依赖；而沿 KV 并行会让多个 block 写同一个 Q 块的 $O$，需要跨 block 的 reduce（这正是 FA1 的 split-K 思路，较慢）。沿 Q 并行天然没有冲突。
+- 并行度从 $b \cdot h$ 变成 $b \cdot h \cdot (N / B_r)$（$B_r$ 是 Q 块大小，见 01 第 3 节）。`b=1, h=32, N=8K, Br=128` 时，block 数从 32 个变成 `32·64 = 2048` 个，远超 SM 数量，占用率因此拉满。
+- 这是 forward 的并行方式。**为什么可以沿 Q 维并行，而不能沿 KV 维并行**：每个 Q 块的 online softmax 是独立的（各自维护自己的 $(m, l, O)$），互不依赖；而沿 KV 并行会让多个 block 写同一个 Q 块的 $O$，需要跨 block 的 reduce（这正是 FA1 的 split-K 思路，较慢）。沿 Q 并行天然没有冲突。
 
 ```mermaid
 flowchart LR

@@ -67,7 +67,7 @@ def dsa_select(I, topk):
 
 # 实测（H^I=4, d^I=16, T=96）：
 #   kI shape = (1, 96, 16)  ⇒ 每 token 只缓存 d^I = 16 个数，而不是 H^I·d^I = 64  ✓
-#   top-k 是 token 级：32 of 96  ⇒ 核心 attention 复杂度 O(L·k) 而非 O(L²)      ✓
+#   top-k 是 token 级：32 of 96  ⇒ 核心 attention 复杂度 O(N·k) 而非 O(N²)      ✓
 ```
 
 ### 2.3 配置
@@ -178,7 +178,7 @@ router 能否收到 LM loss 的梯度？
 
 ## 5. 成本与收益
 
-先说复杂度：核心 attention 从 $O(L^2)$ 降到了 $O(Lk)$，$k \ll L$。**但 indexer 本身仍然是 $O(L^2)$**，只是"requires much less computation compared with MLA in DeepSeek-V3.1-Terminus"，也就是说计算量小很多但阶数没变。⚠️ 这里有一个边界不能含糊：**DSA 并没有让 attention 整体变成次二次复杂度**，它做的事情是把**贵的那一项**变成线性，剩下一个相对便宜的二次项。
+先说复杂度：核心 attention 从 $O(N^2)$ 降到了 $O(Nk)$，$k \ll N$。**但 indexer 本身仍然是 $O(N^2)$**，只是"requires much less computation compared with MLA in DeepSeek-V3.1-Terminus"，也就是说计算量小很多但阶数没变。⚠️ 这里有一个边界不能含糊：**DSA 并没有让 attention 整体变成次二次复杂度**，它做的事情是把**贵的那一项**变成线性，剩下一个相对便宜的二次项。
 
 成本曲线方面，Fig 3 按实际 H800 部署（每 GPU-hour \$2）画出了 per-token 成本随位置变化的曲线，并把 prefill 和 decode 分开展示。API 侧的直接体现是降价："API prices cut by 50%+, effective immediately"（2025-09-29），而 685B 的 MoE backbone 本身没有变化。
 
@@ -215,7 +215,7 @@ C_t^{\mathrm{SprsComp}} &= \{ c_i^{\mathrm{Comp}} \mid i \in \operatorname{Top-k
 \end{aligned}
 $$
 
-**这一步之所以关键**，是因为 [`04`](./04_sparse_trainable.md) §7 的算术已经说明：长上下文下 NSA 的 decode 流量被**压缩分支**主导（64k 长度时是 4095，远大于选择分支的 1024），原因是压缩分支是唯一一个仍随 $L$ 线性增长的部分。CSA 把压缩从「并行的一条分支」改成了「串行的前置步骤」，这样一来**indexer 只需要在长度为 $L/m$ 的序列上打分**，这一项的开销也就随之降下来了。
+**这一步之所以关键**，是因为 [`04`](./04_sparse_trainable.md) §7 的算术已经说明：长上下文下 NSA 的 decode 流量被**压缩分支**主导（64k 长度时是 4095，远大于选择分支的 1024），原因是压缩分支是唯一一个仍随 $N$ 线性增长的部分。CSA 把压缩从「并行的一条分支」改成了「串行的前置步骤」，这样一来**indexer 只需要在长度为 $N/m$ 的序列上打分**，这一项的开销也就随之降下来了。
 
 核心 attention 做的是 shared-KV MQA，作用在选中的压缩 entry 上，外加一个 **grouped output projection**（把 $n_h$ 个 head 分成 $n_g$ 组，先映射到中间维 $d_o$，再映射到最终维度），这是因为 $n_h$ 本身很大。
 
@@ -295,7 +295,7 @@ CSA/HCA (2026-04)          先压缩(m=4) 再在压缩序列上 top-k · 外加 
 
 **走完这条路线之后，sparse attention 的形态基本上定型了**：一个便宜的、独立训练的打分器，加上一个把 KV entry 共享给所有 query 的核心 attention，再加上若干必须保留的静态 prior（sink、local window）。剩下的优化空间在打分器的精度上（FP8 到 FP4）、在复用上（比如 GLM-5.2 的 IndexShare：indexer 每 4 层跑一次、后 3 层复用它的 top-k 结果，1M 长度下 indexer 算子减少约 2.9 倍），以及在压缩率上。
 
-**但这条路线始终没有解决一件事**：稀疏 attention 的 KV cache 仍然随 $L$ 线性增长，因为要留着供打分使用，而且它的表达力上限就是 full attention——本质上它只做信息选择，不改变上限。**另一条路线则彻底放弃了「保留全部历史」这个前提。**
+**但这条路线始终没有解决一件事**：稀疏 attention 的 KV cache 仍然随 $N$ 线性增长，因为要留着供打分使用，而且它的表达力上限就是 full attention——本质上它只做信息选择，不改变上限。**另一条路线则彻底放弃了「保留全部历史」这个前提。**
 
 ---
 

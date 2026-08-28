@@ -10,11 +10,11 @@
 
 | | FlashAttention | Flash Linear Attention |
 |---|---|---|
-| 要避免物化的东西 | $[N, N]$ 的 $S/P$ | 每步的 $[d_k, d_v]$ hidden state（$L$ 份） |
+| 要避免物化的东西 | $[N, N]$ 的 $S/P$ | 每步的 $[d_k, d_v]$ hidden state（$N$ 份） |
 | 手段 | tiling + online softmax | **chunkwise** + 只在 chunk 边界物化状态 |
 | 外层循环 | 一个 CTA 固定 Q 块、遍历 KV 块 | 一个 CTA 固定 state 的 $[BK, BV]$ 分块、**遍历时间** |
 | backward | 用 $Q, K, V, O, \mathrm{LSE}$ **重算** $S/P$ | 用 $Q, K, V, g$ **重算** chunk states |
-| 不变量 | online softmax 的 $m, l, O$ 三元组 | $O = QS + ((QK^{\top}) \odot M)\,\tilde{V}$，$S$ store-before-update |
+| 不变量 | online softmax 的 $m, l, O$ 三元组 | $O = QS + ((QK^{\top}) \odot M)\,\tilde{V}$（$M$ 是 causal mask 矩阵），$S$ store-before-update |
 
 **两边是同一套 IO-aware 思路的两个实例**，连「用算力换显存」的这笔交换都一样。差别在于 linear attention 没有 softmax，所以不需要 online 归一化，但多了一个跨 chunk 的串行依赖——这是它全部工程复杂度的来源。
 
@@ -70,12 +70,18 @@
                common/chunk_o.py:543
 
 delta 族在 chunk_fwd_h 之前多插两级：
-        ├─ solve_tril / kkt_solve ──► A = (I + strictLower(βKKᵀ⊙Γ))⁻¹
+        ├─ solve_tril / kkt_solve ──► A（下三角求逆，公式见下）
         │      utils/solve_tril.py:355 或 gated_delta_rule/chunk_fwd.py:40（融合版）
-        └─ recompute_w_u ───────────► W = A(Γ⊙K), U = A·V
+        └─ recompute_w_u ───────────► W, U（公式见下）
                gated_delta_rule/wy_fast.py:43
    然后走 chunk_delta_h.py:687 而不是 chunk_h.py:306
 ```
+
+其中两条数学公式是：
+
+$$
+A = \bigl(I + \operatorname{strictLower}(\beta\, K K^{\top} \odot \Gamma)\bigr)^{-1}, \qquad W = A\,(\Gamma \odot K), \qquad U = A \cdot V
+$$
 
 顺带一个能说明「共享 kernel」复用程度的例子：`lightning_attn` 完全没有自己的实现，它就是 `simple_gla` 加一个固定的逐头斜率：
 
@@ -95,7 +101,7 @@ delta 族在 chunk_fwd_h 之前多插两级：
 
 ## 2. inter-chunk 状态递归：`chunk_fwd_kernel_h`
 
-[[fla:fla/ops/common/chunk_h.py#L36]]。这个 kernel 实现 $S_{[i+1]} = \mathrm{Diag}(\gamma) \cdot S_{[i]} + K_{[i]}^{\top} V_{[i]}$，是整个 op 里唯一带跨 chunk 串行依赖的部分。
+[[fla:fla/ops/common/chunk_h.py#L36]]。这个 kernel 实现 $S_{[i+1]} = \mathrm{Diag}(\gamma) \cdot S_{[i]} + K_{[i]}^{\top} V_{[i]}$（$\gamma$ 是 decay 因子，逐 head 或逐 channel 的标量，详细介绍见 [07 · linear 路线（二）：衰减机制的演进](../mechanisms/07_linear_decay_gating.md)），是整个 op 里唯一带跨 chunk 串行依赖的部分。
 
 ### 累加器常驻寄存器
 
@@ -171,9 +177,9 @@ delta 族在 chunk_fwd_h 之前多插两级：
     def grid(meta): return (triton.cdiv(K, meta['BK']), triton.cdiv(V, meta['BV']), N * H)
 ```
 
-program id 是 `(i_k, i_v, i_nh)`（[[fla:fla/ops/common/chunk_h.py#L65]]）。**每个 CTA 拥有 state 矩阵的一个 $[BK, BV]$ 分块，串行走完整个时间轴。** 并行度 $= N \cdot H \cdot \lceil K/BK \rceil \cdot \lceil V/BV \rceil$。
+program id 是 `(i_k, i_v, i_nh)`（[[fla:fla/ops/common/chunk_h.py#L65]]）。**每个 CTA 拥有 state 矩阵的一个 $[BK, BV]$ 分块，串行走完整个时间轴。** 并行度 $= B \cdot H \cdot \lceil K/BK \rceil \cdot \lceil V/BV \rceil$（B 是 batch 大小、H 是 head 数；fla 代码里 batch 维叫 N，本文让 N 专指序列长）。
 
-`B=1, T=8192, H=96, K=V=128, BK=BV=64` 时是 `1·96·2·2 = 384` 个 CTA——足够填满一张 GB200，所以这个「没有序列并行」的 kernel 实际上不是瓶颈。这也解释了为什么 GLA 论文的 non-materialization 版本在 batch 大时够用（[06 · linear 路线（一）：kernel trick、RNN 等价与三种计算形式](../mechanisms/06_linear_foundation.md) §3.4）。
+`B=1, N=8192, H=96, K=V=128, BK=BV=64` 时是 `1·96·2·2 = 384` 个 CTA（fla 代码把序列长记作 T，本文统一记作 N）——足够填满一张 GB200，所以这个「没有序列并行」的 kernel 实际上不是瓶颈。这也解释了为什么 GLA 论文的 non-materialization 版本在 batch 大时够用（[06 · linear 路线（一）：kernel trick、RNN 等价与三种计算形式](../mechanisms/06_linear_foundation.md) §3.4）。
 
 片上驻留（`BK=BV=BT=64`）：
 
@@ -338,7 +344,7 @@ GPU 的 SFU 上 `exp2` 是硬件指令，`exp` 要多一次换底。`simple_gla`
             g_gamma = g_gamma * RCP_LN2
 ```
 
-`chunk_local_cumsum`（[[fla:fla/ops/utils/cumsum.py#L428]]）按 chunk 做对数域前缀和：chunk 内 $g_t \leftarrow \sum_{s \in \text{chunk},\, s \le t} g_s$，chunk 之间不累加——跨 chunk 的衰减由 `chunk_fwd_h` 里那次 `b_h *= exp2(g_last)` 负责。$[B, T, H]$ 走标量路径，$[B, T, H, K]$ 走向量路径（GLA / KDA 的通道级门）。
+`chunk_local_cumsum`（[[fla:fla/ops/utils/cumsum.py#L428]]）按 chunk 做对数域前缀和：chunk 内 $g_t \leftarrow \sum_{s \in \text{chunk},\, s \le t} g_s$，chunk 之间不累加——跨 chunk 的衰减由 `chunk_fwd_h` 里那次 `b_h *= exp2(g_last)` 负责。$[B, N, H]$ 走标量路径，$[B, N, H, K]$ 走向量路径（GLA / KDA 的通道级门）。
 
 > FA 的 Triton kernel 用的是同一招：`softmax_scale` 预乘 `RCP_LN2` 之后全程 `exp2`（[01 · IO-awareness、online softmax 与 tiling](./01_io_awareness_online_softmax.md) §4）。两边独立发展出来的工程选择完全同构。
 
@@ -454,15 +460,17 @@ b_h1 += tl.dot(b_k, b_v)                   # ⑤ 再写入残差
 
 wrapper 把 `u` 绑到 kernel 的 `v` 参数上（[[fla:fla/ops/common/chunk_delta_h.py#L725]]）。逐步对齐 [08 · linear 路线（三）：delta rule 与 DPLR 统一框架](../mechanisms/08_linear_delta_rule.md) §1.3 的「读出 → 残差 → 写入」：
 
-```
-v_old = Wᵀ S          # 这个 key 现在映射到什么
-S     ← α · S
-S     ← S + Kᵀ (U − v_old)
-```
+$$
+\begin{aligned}
+v_{\mathrm{old}} &= W^{\top} S && \text{这个 key 现在映射到什么} \\
+S &\leftarrow \alpha \cdot S \\
+S &\leftarrow S + K^{\top} (U - v_{\mathrm{old}})
+\end{aligned}
+$$
 
 `USE_GK`（KDA 的通道级衰减）在 `:259-286` 沿 $K$ 轴对每条 slab 分别 `*= exp2(gk_last)`——这是 GDN 的标量门换成 KDA 的 $\mathrm{Diag}(\alpha)$ 时唯一多出来的那几行。
 
-grid 退化成 $(\lceil V/BV \rceil \cdot N \cdot HV,)$（[[fla:fla/ops/common/chunk_delta_h.py#L722]]）：并行度只剩 $V$ 维和 batch×head，$K$ 维被吃进寄存器。这是 delta 家族相对衰减家族必须付出的固定开销。
+grid 退化成 $(\lceil V/BV \rceil \cdot B \cdot HV,)$（[[fla:fla/ops/common/chunk_delta_h.py#L722]]）：并行度只剩 $V$ 维和 batch×head，$K$ 维被吃进寄存器。这是 delta 家族相对衰减家族必须付出的固定开销。
 
 ## 7. backward：时间倒序扫描与 `dg` 的闭式
 
@@ -480,14 +488,14 @@ grid 退化成 $(\lceil V/BV \rceil \cdot N \cdot HV,)$（[[fla:fla/ops/common/c
 
 前向 $S_{i+1} = \mathrm{Diag}(\gamma)\, S_i + K_i^{\top} V_i$ 的伴随是后缀和：$dS_i$ 从序列末尾往回传，每步先乘衰减再加本 chunk 的 $dO$ 贡献。这就是 [06 · linear 路线（一）：kernel trick、RNN 等价与三种计算形式](../mechanisms/06_linear_foundation.md) §1 说的「前向是前缀和、对 $K$/$V$ 的反向是后缀和」——和 FA backward「固定 KV 块、循环 Q 块」是同一种方向反转。
 
-### `dg` 不必物化 `L×d×d`
+### `dg` 不必物化 `N×d×d`
 
 GLA 论文给出 $d\log\alpha$ 的闭式（[07 · linear 路线（二）：衰减机制的演进](../mechanisms/07_linear_decay_gating.md) §4.5；第二行是后缀和）：
 
 $$
 \begin{aligned}
 d\log b_t &= q_t \odot dq_t - k_t \odot dk_t \\
-d\log \alpha_t &= \sum_{t \le i \le L} d\log b_i
+d\log \alpha_t &= \sum_{t \le i \le N} d\log b_i
 \end{aligned}
 $$
 
@@ -549,7 +557,7 @@ mode = "fused_recurrent" if (q_len <= 64 and not self.training) else self.mode
 | 时间步 | 一个 chunk（`BT=64`） | **一个 token** |
 | 状态物化 | 每 chunk / 每 `split_size` 写 HBM | **不写中间状态**，只在结束时可选写 `ht` |
 | 输出 | 另起 `chunk_fwd_o` | **融合在同一循环**：先更新 $S$ 再 $o = S^{\top} q$ |
-| 并行 | $N \cdot H \cdot \lceil K/BK \rceil \cdot \lceil V/BV \rceil$ | 同左，但 $T$ 必须串行 |
+| 并行 | $B \cdot H \cdot \lceil K/BK \rceil \cdot \lceil V/BV \rceil$ | 同左，但 $N$ 必须串行 |
 | 指针 | 每步重算 offset | 指针 `+= ± stride`，`REVERSE` 给 backward 用 |
 
 `lightning_attn` / `retention` / `simple_gla` 的 decode 全部走这条共享路径，只是 `USE_G` / `USE_G_GAMMA` 不同。KDA 有自己的 `fused_recurrent`（[[fla:fla/ops/kda/fused_recurrent.py]]），因为多了 $\beta$ 和 $\mathrm{Diag}(\alpha)$，但循环骨架一样。
@@ -581,11 +589,11 @@ GLA / KDA 的 `USE_GK` 让 intra-chunk 的 $A_{ij,d} = \exp(g_{id} - g_{jd})$ �
 | `..._intra_sub_intra`（[[fla:fla/ops/gla/chunk.py#L134]]） | **对角 sub-chunk**，逐位置对、log 空间 fp32 | ✗ |
 | `..._intra_sub_intra_split/merge`（[[fla:fla/ops/gla/chunk.py#L209]]） | $K$ 太大时再切一刀 | 对角仍 ✗ |
 
-`chunk_simple_gla` / `chunk_retention` 没有这条路径：标量 $g$ 可以整块乘到 $QK^{\top}$ 上，一次 `tl.dot` 结束。这就是通道级门控带来的额外开销——`chunk_gla` 相对它们慢 1.4–2.3×（`fla` 在 GB200 上的对照；量级随 $T, H, K$ 浮动，但方向稳定）。KDA 用 `a=b=k` 把二级 chunk 矩阵从 4 个减到 2 个（[09 · linear 路线（四）：KDA 与 Kimi Linear / K3](../mechanisms/09_linear_kda_kimi.md) §3）；Kimi K3 再用 `g_min = −5` 把对角路径也拉回 tensor core。
+`chunk_simple_gla` / `chunk_retention` 没有这条路径：标量 $g$ 可以整块乘到 $QK^{\top}$ 上，一次 `tl.dot` 结束。这就是通道级门控带来的额外开销——`chunk_gla` 相对它们慢 1.4–2.3×（`fla` 在 GB200 上的对照；量级随 $N, H, K$ 浮动，但方向稳定）。KDA 用 `a=b=k` 把二级 chunk 矩阵从 4 个减到 2 个（[09 · linear 路线（四）：KDA 与 Kimi Linear / K3](../mechanisms/09_linear_kda_kimi.md) §3）；Kimi K3 再用 `g_min = −5` 把对角路径也拉回 tensor core。
 
 ### 短序列上 FA 仍然更快
 
-linear 的渐近优势在 $L \gg d$ 时才显现。`T ≲ 2K` 时 FA2/FA3 的 Tensor Core 利用率更高，chunkwise 还要付状态扫描和 $C \times C$ 求逆的固定成本。这是 [11 · 混合模式：层比例、NoPE 与正反证据](../mechanisms/11_hybrid.md) §5 MiniMax 回退全attention时引用的那条工程事实：理论交叉点在几百 token，**实测交叉点被 memory-bound 推到几千**。hybrid 把全attention层留在关键位置，部分原因就是不想在短上下文上交这份额外的税。
+linear 的渐近优势在 $N \gg d$ 时才显现。`N ≲ 2K` 时 FA2/FA3 的 Tensor Core 利用率更高，chunkwise 还要付状态扫描和 $C \times C$ 求逆的固定成本。这是 [11 · 混合模式：层比例、NoPE 与正反证据](../mechanisms/11_hybrid.md) §5 MiniMax 回退全attention时引用的那条工程事实：理论交叉点在几百 token，**实测交叉点被 memory-bound 推到几千**。hybrid 把全attention层留在关键位置，部分原因就是不想在短上下文上交这份额外的税。
 
 | 场景 | 该调谁 |
 |---|---|

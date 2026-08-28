@@ -108,7 +108,7 @@ sequenceDiagram
 
 ## 3. V 的处理与 GEMM-II 的操作数布局
 
-一个工程细节：`PV` 这一步里，$P$ 是 consumer 刚算出来、位于寄存器中的 $[B_r, B_c]$，$V$ 在 SMEM 中。WGMMA 对操作数布局有要求，FA3 据此选择是否转置 V（`Transpose_V`）、用哪种 pipeline（`MainloopPipelineVt`，[[flash-attention:hopper/mainloop_fwd_sm90_tma_gmma_ws.hpp#L284-L288]]）。`LargeHeadDimV`（如 head_dim=256 或 MLA 的非对称 KV）会走不同的 mma 路径（[[flash-attention:hopper/flash_fwd_kernel_sm90.h#L420-L424]]）。这些都是「让 WGMMA 吃到正确 layout」的适配工作，不改动算法。
+一个工程细节：`PV` 这一步里，$P$ 是 consumer 刚算出来、位于寄存器中的 $[B_r, B_c]$（$B_r, B_c$ 是 Q/KV 的分块大小，定义见 [01](./01_io_awareness_online_softmax.md) 第 3 节），$V$ 在 SMEM 中。WGMMA 对操作数布局有要求，FA3 据此选择是否转置 V（`Transpose_V`）、用哪种 pipeline（`MainloopPipelineVt`，[[flash-attention:hopper/mainloop_fwd_sm90_tma_gmma_ws.hpp#L284-L288]]）。`LargeHeadDimV`（如 head_dim=256 或 MLA 的非对称 KV）会走不同的 mma 路径（[[flash-attention:hopper/flash_fwd_kernel_sm90.h#L420-L424]]）。这些都是「让 WGMMA 吃到正确 layout」的适配工作，不改动算法。
 
 ## 4. FP8 的两个准确性问题与解法
 

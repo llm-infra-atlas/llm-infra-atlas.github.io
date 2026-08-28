@@ -1,6 +1,6 @@
 # 06 · linear 路线（一）：kernel trick、RNN 等价与三种计算形式
 
-> 本篇是 linear attention 路线的第一篇，回答三个问题。第一，`softmax` 里的 `exp` 一旦换成可分解的核，$O(L^2)$ 的计算如何变成 $O(L)$，以及模型为什么自动变成一个 RNN。第二，parallel / recurrent / chunkwise 三种计算形式各自的公式与复杂度——其中 chunkwise 是后面所有实现采用的形态。第三，朴素 linear attention 为什么不如 softmax，从而为 [`07`](./07_linear_decay_gating.md) 和 [`08`](./08_linear_delta_rule.md) 中的每一项改进提供动机。
+> 本篇是 linear attention 路线的第一篇，回答三个问题。第一，`softmax` 里的 `exp` 一旦换成可分解的核，$O(N^2)$ 的计算如何变成 $O(N)$，以及模型为什么自动变成一个 RNN。第二，parallel / recurrent / chunkwise 三种计算形式各自的公式与复杂度——其中 chunkwise 是后面所有实现采用的形态。第三，朴素 linear attention 为什么不如 softmax，从而为 [`07`](./07_linear_decay_gating.md) 和 [`08`](./08_linear_delta_rule.md) 中的每一项改进提供动机。
 >
 > **前置**：矩阵乘法结合律；会写 softmax attention。统一记号见 [Attention 机制](./README.md) §2（**本篇起全部使用列向量约定**，与原论文的行向量约定互为转置，注意事项见该节）。
 >
@@ -16,7 +16,7 @@ $$
 V'_i = \frac{\sum_j \mathrm{sim}(Q_i, K_j)\, V_j}{\sum_j \mathrm{sim}(Q_i, K_j)}
 $$
 
-当 $\mathrm{sim}(q, k) = \exp(q^{\top} k / \sqrt{D})$ 时就是 softmax attention。对 $\mathrm{sim}$ 的唯一约束是它非负（否则归一化会出问题），因此任何非负核 $k(x, y): \mathbb{R}^{2 \times F} \to \mathbb{R}_{+}$ 都是合法的。给定特征映射 $\phi$，取 $\mathrm{sim}(q, k) = \phi(q)^{\top} \phi(k)$（Eq. 4）：
+当 $\mathrm{sim}(q, k) = \exp(q^{\top} k / \sqrt{D})$ 时就是 softmax attention。对 $\mathrm{sim}$ 的唯一约束是它非负（否则归一化会出问题），因此任何非负核 $k(x, y): \mathbb{R}^{2 \times F} \to \mathbb{R}_{+}$ 都是合法的（$D$ 是 key/query 维、$F$ 是核的输入特征维，均为原文记号）。给定特征映射 $\phi$，取 $\mathrm{sim}(q, k) = \phi(q)^{\top} \phi(k)$（Eq. 4）：
 
 $$
 V'_i = \frac{\phi(Q_i)^{\top} \sum_j \phi(K_j) V_j^{\top}}{\phi(Q_i)^{\top} \sum_j \phi(K_j)}
@@ -25,19 +25,19 @@ $$
 关键的一步只有一处（Eq. 5–6）：利用结合律重排计算顺序。
 
 $$
-\underbrace{(\phi(Q)\, \phi(K)^{\top})\, V}_{\text{compute } [L, L] \text{ first}} \;\Longleftrightarrow\; \underbrace{\phi(Q)\, (\phi(K)^{\top}\, V)}_{\text{compute } [C, M] \text{ first, independent of } L}
+\underbrace{(\phi(Q)\, \phi(K)^{\top})\, V}_{\text{compute } [N, N] \text{ first}} \;\Longleftrightarrow\; \underbrace{\phi(Q)\, (\phi(K)^{\top}\, V)}_{\text{compute } [C, d_v] \text{ first, independent of } N}
 $$
 
-左式必须物化 $L \times L$ 的矩阵；右式先把 $K$ 和 $V$ 缩并成一个 $C \times M$ 的小矩阵。从 $O(L^2)$ 降到 $O(L)$ 的全部变化就在这一步。
+左式必须物化 $N \times N$ 的矩阵；右式先把 $K$ 和 $V$ 缩并成一个 $C \times d_v$ 的小矩阵（$C$ 是 $\phi$ 的特征维，value 维 $M$ 以下统一写作 $d_v$）。从 $O(N^2)$ 降到 $O(N)$ 的全部变化就在这一步。
 
 复杂度（原文 §3.2.1）：
 
 | 形式 | 乘加次数 |
 |---|---|
-| softmax attention | $O(L^2 \max(D, M))$ |
-| 通用 $\phi$（特征维 $C$） | $O(LCM)$ |
-| 2 次多项式核（精确有限维） | $O(LD^2M)$，$L > D^2$ 时有利 |
-| $\phi(x) = \mathrm{elu}(x) + 1$（原文选择） | $O(LDM)$ |
+| softmax attention | $O(N^2 \max(D, d_v))$ |
+| 通用 $\phi$（特征维 $C$） | $O(NC d_v)$ |
+| 2 次多项式核（精确有限维） | $O(ND^2 d_v)$，$N > D^2$ 时有利 |
+| $\phi(x) = \mathrm{elu}(x) + 1$（原文选择） | $O(ND d_v)$ |
 
 原文选用 `elu` 而非 `relu`（Eq. 7）：`relu` 在 $x < 0$ 时梯度为 0，而 $\mathrm{elu}(x) + 1$ 处处可导且保持非负。
 
@@ -49,7 +49,7 @@ $$
 
 $$
 \begin{aligned}
-S_i &= \sum_{j \le i} \phi(K_j) V_j^{\top} \in \mathbb{R}^{C \times M}, & Z_i &= \sum_{j \le i} \phi(K_j) \in \mathbb{R}^{C} \\
+S_i &= \sum_{j \le i} \phi(K_j) V_j^{\top} \in \mathbb{R}^{C \times d_v}, & Z_i &= \sum_{j \le i} \phi(K_j) \in \mathbb{R}^{C} \\
 V'_i &= \phi(Q_i)^{\top} S_i \,/\, (\phi(Q_i)^{\top} Z_i)
 \end{aligned}
 $$
@@ -59,7 +59,7 @@ $$
 $$
 \begin{aligned}
 s_0 &= 0,\quad z_0 = 0 \\
-s_i &= s_{i-1} + \phi(x_i W_K)\, (x_i W_V)^{\top} & &\text{attention memory},\ s \in \mathbb{R}^{C \times M} \\
+s_i &= s_{i-1} + \phi(x_i W_K)\, (x_i W_V)^{\top} & &\text{attention memory},\ s \in \mathbb{R}^{C \times d_v} \\
 z_i &= z_{i-1} + \phi(x_i W_K) & &\text{normalizer memory},\ z \in \mathbb{R}^{C} \\
 y_i &= f_l\big( \phi(x_i W_Q)^{\top} s_i \,/\, (\phi(x_i W_Q)^{\top} z_i) + x_i \big)
 \end{aligned}
@@ -82,7 +82,7 @@ $$
 
 ### 反向的前缀/后缀和结构
 
-朴素实现要存所有 $S_i$，内存放大 $\max(D, M)$ 倍。原文 Eq. 13–15 给出前缀和形式：
+朴素实现要存所有 $S_i$，内存放大 $\max(D, d_v)$ 倍。原文 Eq. 13–15 给出前缀和形式：
 
 $$
 \begin{aligned}
@@ -110,11 +110,11 @@ $$
 def la_parallel(q, k, v, scale):
     """q,k,v: [B,T,H,D] -> [B,T,H,D]"""
     q, k, v = (x.transpose(1, 2) for x in (q, k, v))          # [B,H,T,D]
-    A = ((q * scale) @ k.transpose(-1, -2)).tril()             # [B,H,T,T]  ← 物化了 L×L
+    A = ((q * scale) @ k.transpose(-1, -2)).tril()             # [B,H,T,T]  ← 物化了 N×N
     return (A @ v).transpose(1, 2)
 ```
 
-复杂度为 $O(L^2 d)$ FLOPs、$O(L^2)$ 内存。它全序列并行、全部是 matmul（对 tensor core 友好），但复杂度没有降低。
+复杂度为 $O(N^2 d)$ FLOPs、$O(N^2)$ 内存。它全序列并行、全部是 matmul（对 tensor core 友好），但复杂度没有降低。
 
 ### 3.2 Recurrent（线性）
 
@@ -129,7 +129,7 @@ def la_recurrent(q, k, v, scale):
     return o
 ```
 
-复杂度为 $O(Ld^2)$ FLOPs、$O(d^2)$ 内存。它的 FLOPs 最少，但训练时最慢。GLA 论文 §3.2 说得很直白：
+复杂度为 $O(Nd^2)$ FLOPs、$O(d^2)$ 内存。它的 FLOPs 最少，但训练时最慢。GLA 论文 §3.2 说得很直白：
 
 > "while the recurrent form generally has the **lowest total FLOPs** among the three forms, **this does not translate to actual wall-time efficiency**"
 
@@ -137,7 +137,7 @@ def la_recurrent(q, k, v, scale):
 
 ### 3.3 Chunkwise：现代实现采用的形式
 
-这一节是本章的重点。把序列切成 $L / C$ 个 chunk，用 $S_{[i]}$ 表示处理完前 $i$ 个 chunk 后的状态，$Q_{[i]} \in \mathbb{R}^{C \times d}$ 表示第 $i$ 个 chunk 的 query 块。
+这一节是本章的重点。把序列切成 $N / C$ 个 chunk，用 $S_{[i]}$ 表示处理完前 $i$ 个 chunk 后的状态，$Q_{[i]} \in \mathbb{R}^{C \times d}$ 表示第 $i$ 个 chunk 的 query 块。
 
 **inter-chunk 递归：**
 
@@ -178,13 +178,13 @@ $$
 \begin{aligned}
 \text{intra-chunk}:\quad & O(C^2 d + C d^2) & &\text{per chunk} \\
 \text{inter-chunk}:\quad & O(C d^2) & &\text{per chunk} \\
-\text{total}:\quad & O\big( (L/C)(C^2 d + C d^2) \big) = O(LCd + Ld^2)
+\text{total}:\quad & O\big( (N/C)(C^2 d + C d^2) \big) = O(NCd + Nd^2)
 \end{aligned}
 $$
 
-当 $L > d$ 时总复杂度小于 parallel 的 $O(L^2 d)$。$C$ 可以看作一个插值参数：$C = L$ 时恢复 parallel form，$C = 1$ 时恢复 recurrent form。实践中取 $C = 64$——既是 16 的倍数（对 tensor core 友好），$C^2 = 4096$ 又放得进 SRAM。
+当 $N > d$ 时总复杂度小于 parallel 的 $O(N^2 d)$。$C$ 可以看作一个插值参数：$C = N$ 时恢复 parallel form，$C = 1$ 时恢复 recurrent form。实践中取 $C = 64$——既是 16 的倍数（对 tensor core 友好），$C^2 = 4096$ 又放得进 SRAM。
 
-chunkwise 能同时获得两种形式各自的好处：绝大部分计算是三个 $C \times C$ / $C \times d$ / $d \times d$ 的 matmul（可以使用 tensor core），而状态只在 chunk 边界上串行推进（$L / C$ 次而非 $L$ 次）。
+chunkwise 能同时获得两种形式各自的好处：绝大部分计算是三个 $C \times C$ / $C \times d$ / $d \times d$ 的 matmul（可以使用 tensor core），而状态只在 chunk 边界上串行推进（$N / C$ 次而非 $N$ 次）。
 
 > **注意 $S$ 的更新在输出之后。** $o$ 用的是 $S_{[i]}$（进入本 chunk 时的状态），本 chunk 内部的贡献由 intra 项负责。这个「先读后写」的顺序在 kernel 里也一模一样（`fla` 的 `chunk_fwd_kernel_h` 是 store-before-update，见 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md) §2）。写错了不会报错，只会静默算成 off-by-one-chunk。
 
@@ -192,9 +192,9 @@ chunkwise 能同时获得两种形式各自的好处：绝大部分计算是三�
 
 | 形式 | 公式 | 训练复杂度 | 序列并行 | tensor core | 用在哪 |
 |---|---|---|---|---|---|
-| **Parallel** | $((QK^{\top}) \odot M)\, V$ | $O(L^2 d)$ | 全并行 | ✓ | 教学/短序列；DeltaNet 的完全并行式还要 $L \times L$ 求逆，不实用 |
-| **Recurrent** | $S_t = S_{t-1} + k_t v_t^{\top}$ | $O(Ld^2)$ | 无 | ✗ | **decode**（`fla` 的 `fused_recurrent_*`） |
-| **Chunkwise** | 见上 | $O(LCd + Ld^2)$ | chunk 间可并行 | ✓ | **训练 + prefill**（`fla` 的 `chunk_*`） |
+| **Parallel** | $((QK^{\top}) \odot M)\, V$ | $O(N^2 d)$ | 全并行 | ✓ | 教学/短序列；DeltaNet 的完全并行式还要 $N \times N$ 求逆，不实用 |
+| **Recurrent** | $S_t = S_{t-1} + k_t v_t^{\top}$ | $O(Nd^2)$ | 无 | ✗ | **decode**（`fla` 的 `fused_recurrent_*`） |
+| **Chunkwise** | 见上 | $O(NCd + Nd^2)$ | chunk 间可并行 | ✓ | **训练 + prefill**（`fla` 的 `chunk_*`） |
 
 `fla` 的公开 API 就是按这个划分的，layer 在运行时切换（[[fla:fla/layers/kda.py#L212]]）：训练走 `chunk`，短序列推理走 `fused_recurrent`。
 
@@ -226,7 +226,7 @@ parfor n in range(NT):                       # Pass 2: 全 chunk 完全并行
 
 > "first performs the inter-chunk recurrence and stores all `S[n]` … Then, the `O[n]`'s can be computed in parallel for all chunks. This approach offers better parallelism but **increases the memory footprint by approximately 10-20%**. We mitigate this through **recomputation**, where the hidden states discarded after the forward pass and recomputed during the backward pass… **we adopt this strategy by default**."
 
-这与 FlashAttention 的 recomputation 在 linear attention 中的对应做法完全一致（[01 · IO-awareness、online softmax 与 tiling](../fa/01_io_awareness_online_softmax.md) §5）：forward 丢弃 $O(Ld^2 / C)$ 的中间状态，backward 重算，用算力换显存。
+这与 FlashAttention 的 recomputation 在 linear attention 中的对应做法完全一致（[01 · IO-awareness、online softmax 与 tiling](../fa/01_io_awareness_online_softmax.md) §5）：forward 丢弃 $O(Nd^2 / C)$ 的中间状态，backward 重算，用算力换显存。
 
 I/O 优化的关键一句（对应 kernel 里那个共享 `b_q` 的循环）：
 
@@ -236,11 +236,11 @@ HBM 流量分析（我按 kernel 结构推导，论文只给了 FLOPs 复杂度�
 
 | kernel | 读 | 写 |
 |---|---|---|
-| inter-chunk 状态递归 | $K, V$：$2Ld$ | $h$：$(L/C)\, d^2 = Ld^2 / C$ |
-| 输出 kernel | $Q, K, V, h$：$O(Ld + Ld^2 / C)$ | $O$：$Ld$ |
-| 合计 | **$O(Ld + Ld^2 / C)$** | |
+| inter-chunk 状态递归 | $K, V$：$2Nd$ | $h$：$(N/C)\, d^2 = Nd^2 / C$ |
+| 输出 kernel | $Q, K, V, h$：$O(Nd + Nd^2 / C)$ | $O$：$Nd$ |
+| 合计 | **$O(Nd + Nd^2 / C)$** | |
 
-对比 recurrent form 物化每步状态的 $O(Ld^2)$，状态那一项降了 $C$ 倍（$C = 64$ 时 64 倍）。
+对比 recurrent form 物化每步状态的 $O(Nd^2)$，状态那一项降了 $C$ 倍（$C = 64$ 时 64 倍）。
 
 ## 4. 朴素 linear attention 的五个缺陷
 
@@ -274,7 +274,7 @@ softmax 的 `exp` 提供输入相关的锐化，让 query 能把权重集中到�
 
 ### (4) finite-state capacity
 
-状态固定为 $d_k \times d_v$，信息量上限固定；softmax 的 KV cache 随 $L$ 线性增长，理论容量无限。Jelassi et al. 2024（*Repeat After Me*，[arXiv:2402.01032](https://arxiv.org/abs/2402.01032)）证明 Transformer 在 copying 任务上严格强于 SSM。
+状态固定为 $d_k \times d_v$，信息量上限固定；softmax 的 KV cache 随 $N$ 线性增长，理论容量无限。Jelassi et al. 2024（*Repeat After Me*，[arXiv:2402.01032](https://arxiv.org/abs/2402.01032)）证明 Transformer 在 copying 任务上严格强于 SSM。
 
 Kimi Linear 的表述："purely linear structure remain fundamentally constrained by the **finite-state capacity**, making long-sequence modeling and in-context retrieval theoretically challenging."
 
@@ -315,10 +315,10 @@ flowchart TB
 
 | 要点 | 内容 |
 |---|---|
-| **kernel trick** | `sim` 只要非负可分解，结合律重排就把 $O(L^2)$ 变 $O(L)$；唯一代价是丢掉 `exp` 的锐化 |
-| **RNN 等价** | causal linear attention = 关于**时间**的 RNN，状态 $S \in \mathbb{R}^{d_k \times d_v}$ 与 $L$ 无关 |
+| **kernel trick** | `sim` 只要非负可分解，结合律重排就把 $O(N^2)$ 变 $O(N)$；唯一代价是丢掉 `exp` 的锐化 |
+| **RNN 等价** | causal linear attention = 关于**时间**的 RNN，状态 $S \in \mathbb{R}^{d_k \times d_v}$ 与 $N$ 无关 |
 | **三种形式** | parallel（并行但二次）/ recurrent（线性但无并行、无 tensor core）/ **chunkwise（两者兼得）** |
-| **chunkwise 骨架** | $O = QS + ((QK^{\top}) \odot M)\, V$；$C = L$ 退化成 parallel，$C = 1$ 退化成 recurrent |
+| **chunkwise 骨架** | $O = QS + ((QK^{\top}) \odot M)\, V$；$C = N$ 退化成 parallel，$C = 1$ 退化成 recurrent |
 | **FLA 的选择** | materialization + backward 重算（和 FA 的 recomputation 同一个 trade） |
 | **五个缺陷** | 无衰减 / 无界目标 / 无锐化 / finite state / 无 selection —— 后面每个补丁各治一条 |
 

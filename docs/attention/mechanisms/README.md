@@ -4,7 +4,7 @@
 
 记号统一采用列向量约定，见下方 §2。
 
-[FlashAttention](../fa/README.md) 解决的是另一个问题：在 attention 定义给定的前提下，怎样在硬件上把它算得快。本目录讨论的是定义本身怎样变——当 $O(L^2)$ 的计算量和 $O(L)$ 的 KV cache 都撑不住 1M context 时，人们改动的不再是 kernel，而是数学。
+[FlashAttention](../fa/README.md) 解决的是另一个问题：在 attention 定义给定的前提下，怎样在硬件上把它算得快。本目录讨论的是定义本身怎样变——当 $O(N^2)$ 的计算量和 $O(N)$ 的 KV cache 都撑不住 1M context 时，人们改动的不再是 kernel，而是数学。
 
 ---
 
@@ -12,24 +12,24 @@
 
 ## 1. 三条路线概览
 
-三条路线针对的是 decode 阶段的同一个式子。对 seqlen $L$，每层每个 token 的 KV cache 是 $2 h_{kv} d_h$ 个元素，生成第 $L+1$ 个 token 时要把整个 cache 从 HBM 读一遍：
+三条路线针对的是 decode 阶段的同一个式子。对 seqlen $N$，每层每个 token 的 KV cache 是 $2 h_{kv} d_h$ 个元素，生成第 $N+1$ 个 token 时要把整个 cache 从 HBM 读一遍：
 
 ```
-decode 每 token 的 attention HBM 流量 = L · (每 token cache 字节) · 层数
+decode 每 token 的 attention HBM 流量 = N · (每 token cache 字节) · 层数
 ```
 
-在 `L=1M`、Llama-3-70B 式的 GQA-8 配置下，这个式子的取值是每生成一个 token 读 40 GB——以 H100 的 3.35 TB/s 带宽计算，仅读 cache 就需要 12 ms，而整个模型权重只有 140 GB。attention 由此从不起眼的一层变成了 serving 的主要成本。三条路线分别压缩这个式子的不同因子：
+在 `N=1M`、Llama-3-70B 式的 GQA-8 配置下，这个式子的取值是每生成一个 token 读 40 GB——以 H100 的 3.35 TB/s 带宽计算，仅读 cache 就需要 12 ms，而整个模型权重只有 140 GB。attention 由此从不起眼的一层变成了 serving 的主要成本。三条路线分别压缩这个式子的不同因子：
 
 ```
                                   每 token cache          decode 计算
-  ① 基础 / head sharing      2·h_kv·d_h  ↓ 常数因子          O(L·d)
+  ① 基础 / head sharing      2·h_kv·d_h  ↓ 常数因子          O(N·d)
      MHA → MQA → GQA → MLA   （128×128 → 576，56.9×）
                                                                             砍常数
-  ② sparse                   不变（仍需全 cache 供选择）      O(k·d), k≪L
-     SWA → NSA → DSA → CSA   但**读**的量降到 O(k)                          砍 L
+  ② sparse                   不变（仍需全 cache 供选择）      O(k·d), k≪N
+     SWA → NSA → DSA → CSA   但**读**的量降到 O(k)                          砍 N
                                                                           （跳过）
-  ③ linear                   d_k·d_v（**与 L 无关**）         O(d_k·d_v)
-     LA → GLA → DeltaNet → KDA                                              砍 L
+  ③ linear                   d_k·d_v（**与 N 无关**）         O(d_k·d_v)
+     LA → GLA → DeltaNet → KDA                                              砍 N
                                                                           （压缩）
   ④ hybrid                   按层比例混合 ②/③ 与 ①
      Kimi Linear 3:1、Gemma 3 5:1、Qwen3-Next 3:1
@@ -43,7 +43,8 @@ decode 每 token 的 attention HBM 流量 = L · (每 token cache 字节) · 层
 
 | 符号 | 含义 | shape |
 |---|---|---|
-| $L$ / $T$ | 序列长度 | —— |
+| $N$ | 序列长度 | —— |
+| 原论文/代码记号 | 引用论文或代码原文时保留其原记号（如序列长的 T、S），正文统一用 $N$ | —— |
 | $d$ | 模型 hidden size | —— |
 | $h$ / $h_{kv}$ | query head 数 / KV head 数 | —— |
 | $d_h$ | 每 head 维度；$d_k$/$d_v$ 分开写时指 key/value 维 | —— |
@@ -181,21 +182,21 @@ NSA 支持「必须原生训练」的量化论据是：top-20% 的 attention 只
 
 ## 7. 复杂度与每 token 状态总表
 
-再往下看一张更细的账，把上表里每个机制的复杂度和状态大小都列出来，方便互相比较。记号约定：$L$ 是序列长、$h$/$h_{kv}$ 是 query/KV head 数、$d_h$ 是 head 维、$w$ 是窗口大小、$k$ 是稀疏预算、$d_c$ 是 MLA 的 latent 维、$d_h^R$ 是 decoupled RoPE 的维度。「每 token 状态」按元素数计，且是 per layer 的口径。
+再往下看一张更细的账，把上表里每个机制的复杂度和状态大小都列出来，方便互相比较。记号约定：$N$ 是序列长、$h$/$h_{kv}$ 是 query/KV head 数、$d_h$ 是 head 维、$w$ 是窗口大小、$k$ 是稀疏预算、$d_c$ 是 MLA 的 latent 维、$d_h^R$ 是 decoupled RoPE 的维度。「每 token 状态」按元素数计，且是 per layer 的口径。
 
 | 机制 | prefill 计算 | decode 每 token 计算 | 每 token 状态 | $O(1)$ 状态？ |
 |---|---|---|---|---|
-| MHA | $O(L^2 d)$ | $O(Ld)$ | $2 h d_h$ | ✗ 随 $L$ 线性 |
-| GQA(g) | $O(L^2 d)$ | $O(Ld)$ | $2 g d_h$ | ✗ |
-| MQA | $O(L^2 d)$ | $O(Ld)$ | $2 d_h$ | ✗ |
-| **MLA** | $O(L^2 d)$ + 上投影 | $O(L d_c)$ | **$d_c + d_h^R$**（注意**无因子 2**：latent 同时充当 K 和 V） | ✗ 但常数极小 |
+| MHA | $O(N^2 d)$ | $O(Nd)$ | $2 h d_h$ | ✗ 随 $N$ 线性 |
+| GQA(g) | $O(N^2 d)$ | $O(Nd)$ | $2 g d_h$ | ✗ |
+| MQA | $O(N^2 d)$ | $O(Nd)$ | $2 d_h$ | ✗ |
+| **MLA** | $O(N^2 d)$ + 上投影 | $O(N d_c)$ | **$d_c + d_h^R$**（注意**无因子 2**：latent 同时充当 K 和 V） | ✗ 但常数极小 |
 | MLA + NoPE | 同上 | 同上 | $d_c$（可退化成纯 MQA） | ✗ |
-| **SWA(w)** | $O(Lwd)$ | $O(wd)$ | $2 h_{kv} d_h$，但**总量封顶在 $\min(L, w)$ 个 token** | ✓ 有界 $O(w)$ |
-| **NSA / MoBA / DSA** | $O(Lkd)$ | $O(kd)$ + 索引 | **仍需全 KV cache**（用于打分/选择） | ✗ |
-| linear attn / GLA / RetNet | $O(LCd + L d_k d_v)$ | $O(d_k d_v)$ | **$h d_k d_v$** | ✓ |
-| Lightning Attention-2 | $O(LBd + Ld^2/h)$ | $O(d^2/h)$ | $h d_h^2$ | ✓ |
-| Mamba-2 / SSD | $O(LNP)$（$N$=state 维，$P$=head 维） | $O(NP)$ | $hNP$ | ✓ |
-| DeltaNet / GDN / **KDA** | $O(LC d_k + L d_k d_v)$ + $O((L/C)\, C^3)$ 三角求逆 | $O(d_k d_v)$ | $h d_k d_v$ | ✓ |
+| **SWA(w)** | $O(Nwd)$ | $O(wd)$ | $2 h_{kv} d_h$，但**总量封顶在 $\min(N, w)$ 个 token** | ✓ 有界 $O(w)$ |
+| **NSA / MoBA / DSA** | $O(Nkd)$ | $O(kd)$ + 索引 | **仍需全 KV cache**（用于打分/选择） | ✗ |
+| linear attn / GLA / RetNet | $O(NCd + N d_k d_v)$ | $O(d_k d_v)$ | **$h d_k d_v$** | ✓ |
+| Lightning Attention-2 | $O(NBd + Nd^2/h)$ | $O(d^2/h)$ | $h d_h^2$ | ✓ |
+| Mamba-2 / SSD | $O(N \cdot d_s P)$（$d_s$=state 维，$P$=head 维） | $O(d_s P)$ | $h d_s P$ | ✓ |
+| DeltaNet / GDN / **KDA** | $O(NC d_k + N d_k d_v)$ + $O((N/C)\, C^3)$ 三角求逆 | $O(d_k d_v)$ | $h d_k d_v$ | ✓ |
 
 **实例化（元素数 → bf16 @128K 上下文）**：
 
@@ -207,10 +208,10 @@ NSA 支持「必须原生训练」的量化论据是：top-20% 的 attention 只
 | **Llama-3-70B GQA-8** | $2048$ | 80 | **40 GiB** | 比 671B 的 V3 还多 4.7× |
 | **gpt-oss-120b**（18 full + 18 SWA-128，$d_h=64$） | —— | 36 | **4.50 GiB** | 全 full 会是 9.00 GiB |
 | **Gemma-3-27B**（10 global + 52 SWA-1024） | —— | 62 | **10.41 GiB** | 全 global 会是 62 GiB |
-| **Kimi-Linear-48B**（7 MLA-NoPE + 20 KDA） | 7 层 $512$ + 20 层常数 | 27 | **0.88 GiB** | KDA 部分 `20·32·128·128·2B ≈ 21 MB`，与 $L$ 无关 |
+| **Kimi-Linear-48B**（7 MLA-NoPE + 20 KDA） | 7 层 $512$ + 20 层常数 | 27 | **0.88 GiB** | KDA 部分 `20·32·128·128·2B ≈ 21 MB`，与 $N$ 无关 |
 | **MiniMax-Text-01**（10 softmax + 70 lightning） | 10 层 $2048$ + 70 层常数 | 80 | **5.00 GiB** | |
 
-Kimi Linear 论文中「节省 75% KV cache」的说法由此而来：27 层里只有 7 层（25.9%）的 cache 随 $L$ 增长，20 层 KDA 的 state 固定为 $32 \times 128 \times 128$。1M 上下文下 MLA 部分约 7.2 GB，KDA 部分约 21 MB 可以忽略，因此相对全 MLA 节省约 **74%**，与论文的 "up to 75%" 吻合。
+Kimi Linear 论文中「节省 75% KV cache」的说法由此而来：27 层里只有 7 层（25.9%）的 cache 随 $N$ 增长，20 层 KDA 的 state 固定为 $32 \times 128 \times 128$。1M 上下文下 MLA 部分约 7.2 GB，KDA 部分约 21 MB 可以忽略，因此相对全 MLA 节省约 **74%**，与论文的 "up to 75%" 吻合。
 
 > 一个直观换算，可以感受 finite-state 约束有多紧：每 head 的 linear state 是 $128 \times 128 = 16384$ 个数，一个 token 的 KV 是 $2 \times 128 = 256$ 个数，因此单头 linear state 的信息预算约等于 64 个 token 的 KV。但状态是稠密叠加（superposition）的，并非简单存放 64 个 token——delta rule 的意义正是让这种叠加可纠错、可精确替换（[`08`](./08_linear_delta_rule.md) §2）。
 

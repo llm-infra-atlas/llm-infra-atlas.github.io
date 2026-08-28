@@ -19,7 +19,7 @@ Mistral 7B 的具体配置和收益是这样的：$W = 4096$；配合 **rolling 
 这里有一个值得记住的性质：SWA 是本章唯一一个**KV cache 总量存在上界**的静态方案。
 
 ```
-SWA 的 KV cache 总元素 = 2·h_kv·d_h · 层数 · min(L, W)     ← 与 L 解耦（封顶在 W）
+SWA 的 KV cache 总元素 = 2·h_kv·d_h · 层数 · min(N, W)     ← 与 N 解耦（封顶在 W）
 ```
 
 正因为这个性质，它在 [Attention 机制](./README.md) §7 的表里独占一行：不是 $O(1)$，但是 $O(W)$。
@@ -28,7 +28,7 @@ SWA 的 KV cache 总元素 = 2·h_kv·d_h · 层数 · min(L, W)     ← 与 L �
 
 如果只保留最近 $W$ 个 token（也就是纯滑窗、不做重算），perplexity 会直接**爆炸**。StreamingLLM（[arXiv:2309.17453](https://arxiv.org/abs/2309.17453)）找到了这背后的原因，而且原因完全来自 softmax 的代数性质，和内容无关。
 
-![四种方案对比：(a) dense（O(L²)、超出训练长度就崩）(b) window（PPL 5158，崩）(c) sliding with re-computation（PPL 5.43 但 O(L·W²)）(d) StreamingLLM = 4 个 sink + rolling window（PPL 5.40，O(L·W)）](assets/arxiv/2309.17453_streamingllm.png)
+![四种方案对比：(a) dense（O(N²)、超出训练长度就崩）(b) window（PPL 5158，崩）(c) sliding with re-computation（PPL 5.43 但 O(N·W²)）(d) StreamingLLM = 4 个 sink + rolling window（PPL 5.40，O(N·W)）](assets/arxiv/2309.17453_streamingllm.png)
 
 > 图：StreamingLLM 的核心对照图（Xiao et al. 2023, Fig 1；[arXiv:2309.17453](https://arxiv.org/abs/2309.17453)）。注意 (b) 和 (d) 的**唯一差别就是保留了最前面 4 个 token 的 KV**，PPL 从 5158 变成 5.40——差三个数量级。
 
@@ -170,13 +170,13 @@ Llama 4 的分工：
 
 ```python
 def quest_page_scores(q, k, page=16):
-    """q: [B,H,1,D] (decode)。k: [B,H,L,D]。返回每个 page 的上界打分 [B,H,L/page]。"""
+    """q: [B,H,1,D] (decode)。k: [B,H,N,D]。返回每个 page 的上界打分 [B,H,N/page]。"""
     kp = k.unflatten(2, (-1, page))                    # [B,H,NP,page,D]
     m, M = kp.amin(3), kp.amax(3)                      # channel-wise min / max，每 page 各 D 维
     return torch.maximum(q.transpose(2, 3) * m, q.transpose(2, 3) * M).sum(-1)
 ```
 
-算一下代价：page 大小为 $S$、上下文长度为 $L$，选 top-$K$ 时实际要读的 cache 比例是 $1/S + KS/L$；取 $S=16$、64K 上下文、top-4K，能拿到 **8 倍**的减少。
+算一下代价：page 大小为 $S$、上下文长度为 $N$，选 top-$K$ 时实际要读的 cache 比例是 $1/S + KS/N$；取 $S=16$、64K 上下文、top-4K，能拿到 **8 倍**的减少。
 
 **MInference 1.0**（[arXiv:2407.02490](https://arxiv.org/abs/2407.02490)，NeurIPS 2024）走的是 training-free 路线，但**只加速 prefill**。它定义了三种 head 级 pattern：
 
@@ -200,7 +200,7 @@ def quest_page_scores(q, k, page=16):
 GQA，一组 g 个 query head 共享一份 KV。
 每个 head 独立选自己的 top-k pages
   ⇒ 实际必须从 HBM 搬的字节 = 组内 g 个 head 选择集合的【并集】
-  ⇒ 计算量降了 k/L，但访存量降得远少于 k/L
+  ⇒ 计算量降了 k/N，但访存量降得远少于 k/N
   ⇒ 而 decode 是 memory-bound（[README] §1）⇒ 加速远不如账面
 ```
 
@@ -227,8 +227,8 @@ NSA 的 LongBench 对照（所有 sparse baseline 都给 2560 个激活 token �
 |---|---|---|---|---|
 | SWA | Mistral、Gemma local、GPT-OSS local | **封顶 $O(W)$** | 两个都 | 单层感受野只有 $W$，靠堆层传播（chunked 连这个都没有） |
 | window + sink | StreamingLLM | 封顶 | decode（streaming） | 只能流式，不能真正检索长上下文 |
-| local+global(+random) | Longformer、BigBird | $O(L)$ 但常数小 | 两个都 | pattern 与内容无关 |
-| 层间交替 | Gemma 2/3、GPT-OSS、Llama 4 | 少数层随 $L$ 增长 | 两个都 | **实际最成功的静态方案**；全局层仍是 $O(L^2)$ |
+| local+global(+random) | Longformer、BigBird | $O(N)$ 但常数小 | 两个都 | pattern 与内容无关 |
+| 层间交替 | Gemma 2/3、GPT-OSS、Llama 4 | 少数层随 $N$ 增长 | 两个都 | **实际最成功的静态方案**；全局层仍是 $O(N^2)$ |
 | 推理期动态 | Quest、MInference、H2O | 全量 | 只有一个阶段 | 阶段受限 + GQA 访存不稀疏 + post-hoc 质量损失 |
 
 **静态方案，尤其是层间交替这一类，在工业界非常成功且几乎是免费的**，Gemma 3、GPT-OSS、Llama 4 都靠它撑住了 128K 的上下文。它的上限在于「pattern 不看内容」。推理期动态方案想要看内容却又不改训练，结果被 GQA 的访存约束和 post-hoc 的质量天花板一起夹住，两头都没能做到最好。

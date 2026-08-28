@@ -123,7 +123,7 @@ $G$ 是 kernel 的 tile 维：一组 Q head 被当成 $[G, d]$ 一次载入，Tr
 
 这就是 01 的 online softmax，只是外层循环的「下一个 KV 块」从 $j, j+1, j+2, \dots$ 换成了 `block_indices[0], block_indices[1], …`。因果 mask 仍按绝对位置切。`Q_OFFSET = TK − TQ` 是 decode 路径：query 是序列末尾的 `TQ` 个 token，KV 带 cache。
 
-grid 是 `(TQ, ⌈V/BV⌉, B·H)`：每个 query token 乘每个 KV head 一个 CTA。论文说「Outer Loop on Grid」的理由就在这里——每个 query 的内层都是固定的 `n` 块，静态调度没有 tail effect。
+grid 是 `(TQ, ⌈V/BV⌉, B·H)`（与 fla 代码变量对应：B 是 batch 大小，H 是 KV head 数，BV 是 V 维的分块大小）：每个 query token 乘每个 KV head 一个 CTA。论文说「Outer Loop on Grid」的理由就在这里——每个 query 的内层都是固定的 `n` 块，静态调度没有 tail effect。
 
 backward（[[fla:fla/ops/nsa/parallel.py#L307|parallel_nsa_bwd_kernel_dq]] / `_dkv`）同样按 `block_indices` gather，用存下来的 LSE 重算 $P$，和 FA 的 recomputation 同构。
 
@@ -139,12 +139,16 @@ backward（[[fla:fla/ops/nsa/parallel.py#L307|parallel_nsa_bwd_kernel_dq]] / `_d
 
 [[fla:fla/ops/moba/parallel.py#L28|prepare_moba_chunks]] 按 `chunk_size` 切 packed 序列，并丢掉每个 sample 的最后一块（它只会被本块自 attention 看见，不能当 MoBA target）。然后 `parallel_moba`（[[fla:fla/ops/moba/parallel.py#L296]]）：
 
-```
-k̄ = mean_pool(K, chunk)                         # [n_chunk, H, D]
-gate = einsum("nhk, thk -> nht", k̄, q)          # 每 (chunk, head, token) 一个分数
-gate.masked_fill_(未来块 | 跨 sample, −∞)
-_, idx = topk(gate, k=topk-1, dim=0)            # 本块已由 self-attn 覆盖，少选 1
-```
+打分分两步：先把每个 chunk 的 K mean-pool 成一个代表向量，再让每个 token 的 query 与所有 chunk 代表打分：
+
+$$
+\begin{aligned}
+\bar{k}_c &= \operatorname{mean\_pool}(K_{[c]}) && \text{每个 chunk 一个 entry，shape } [n_{\text{chunk}}, H, D] \\
+\mathrm{gate} &= \mathrm{einsum}(\texttt{"nhk, thk -> nht"},\, \bar{k},\, q) && \text{每 (chunk, head, token) 一个分数}
+\end{aligned}
+$$
+
+然后 `gate.masked_fill_(未来块 | 跨 sample, −∞)`，再 `topk(gate, k=topk-1, dim=0)` 选出目标块——本块已由 self-attn 覆盖，所以少选 1。
 
 选中的 `(chunk, head, token)` 三元组被 scatter 成布尔 mask，再用 `nonzero` 抽出：
 
@@ -214,16 +218,18 @@ $$
 
 `k_idx: [B, T, DI]` 没有 head 维——单头共享，MQA 式。`topk` 默认 2048，短于 `topk` 的序列用 `-1` padding。`naive_dsa`（[[fla:fla/ops/dsa/naive.py#L98]]）把选中下标 scatter 成布尔 mask，再跑一次 masked softmax。选择跨所有 query head 共享（docstring: "The selection is shared across all query heads"）。
 
-这份参考实现的作用是把公式固定下来供核对，完全不能当 kernel 用：indexer 物化了 $[H_I, T, T]$，核心 attention 物化了 $[H_Q, T, T]$。
+这份参考实现的作用是把公式固定下来供核对，完全不能当 kernel 用：indexer 物化了 $[H_I, N, N]$，核心 attention 物化了 $[H_Q, N, N]$（fla 代码里序列长记作 T，本文统一记作 N）。
 
 ### 4.2 生产 kernel
 
 DSA 没有让 attention 整体次二次。它把开销拆成两部分：
 
-```
-indexer :  O(L² · h_I · d_I)     h_I 小、ReLU、FP8，仍然二次但很便宜
-core    :  O(L · k · d)          k=2048，MQA-mode MLA，一次 gather + 一次短 FA
-```
+$$
+\begin{aligned}
+\text{indexer} &: \quad O(N^2\, h_I\, d_I) && \text{$h_I$ 小、ReLU、FP8，仍然二次但很便宜} \\
+\text{core} &: \quad O(N k d) && \text{$k = 2048$，MQA-mode MLA，一次 gather + 一次短 FA}
+\end{aligned}
+$$
 
 两个开源落点（DeepSeek-V3.2 技术报告 / 官方 repo）：
 
@@ -243,7 +249,7 @@ IO-aware 论点在这里换了一种说法：token 级 gather 本身是不规则
 DeepSeek-V4 的 CSA 把 indexer 搬到压缩后的序列上（[05 · sparse 路线（三）：DSA 与 DeepSeek-V4 的 CSA/HCA](../mechanisms/05_sparse_dsa_frontier.md) §6），只改 indexer 的输入，不改 core。core attention 仍然是「gather + MQA FA」，多出来的是：
 
 - 一道学出来的 token-level compressor（门控池化，不是 NSA 的 MLP `φ`）
-- indexer 在 $L/m$ 长度上跑，二次项再缩一档
+- indexer 在 $N/m$ 长度上跑，二次项再缩一档
 - 当前压缩块看不见块内其他 token，必须保留 $w=128$ 的 SWA 分支——又回到 §1 那条现成 FA 路径
 
 HCA 把压缩比推到 $m'=128$ 后改回 dense。从 kernel 角度看，CSA/HCA 是 DSA 的调度参数，不是新的 softmax 算法。

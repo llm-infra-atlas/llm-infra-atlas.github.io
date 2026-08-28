@@ -91,7 +91,7 @@ $\gamma_i = 1 - 2^{-5-i}$：head 0 衰减最快（$\gamma \approx 0.969$），he
 
 本节是纯实现视角，但它给出了理解 chunkwise 的另一个角度。
 
-- **Left product** 指 $(QK^{\top})V$，先算 $L \times L$，复杂度是二次的，但天然支持因果掩码。
+- **Left product** 指 $(QK^{\top})V$，先算 $N \times N$，复杂度是二次的，但天然支持因果掩码。
 - **Right product** 指 $Q(K^{\top}V)$，先算 $d \times d$，复杂度是线性的，但因果情形需要 cumsum，而 cumsum 串行、非 matmul，是效率瓶颈。
 
 Lightning Attention-2 的答案是：intra-block 用 left product（块小，二次开销可忽略），inter-block 用 right product（用累积的 $KV$），从而完全绕开 cumsum。MiniMax-01 原文：
@@ -158,7 +158,7 @@ $$
 (L \circ QK^{\top}) \cdot V, \qquad L_{ij} = a_i a_{i-1} \cdots a_{j+1}\ \text{if}\ i \ge j\ \text{else}\ 0
 $$
 
-与 softmax attention 的差别只有两点（原文）：一是丢掉 softmax；二是 attention 矩阵额外逐元素乘一个掩码矩阵 $L$。作者的解读非常重要：
+与 softmax attention 的差别只有两点（原文）：一是丢掉 softmax；二是 attention 矩阵额外逐元素乘一个掩码矩阵 $L$（原文把这个掩码矩阵记作 $L$；本文序列长统一记作 $N$，二者不是一个东西，本节下文沿用原文的 $L$）。作者的解读非常重要：
 
 > "the mask matrix $L$ can be viewed as replacing the heuristic positional embeddings of Transformers with a different **data-dependent positional mask** that controls how much information is transferred across time."
 
@@ -363,12 +363,12 @@ sub-chunk 内部（对角块）仍用 Eq. 4 逐位置对全精度计算。
 
 ### 4.5 省内存的 `dα_t`
 
-此前工作（Mamba）声称必须物化 $L \times d \times d$ 的 hidden states 才能算 $d\alpha_t = (S_{t-1} \odot dS_t)\,\mathbf{1}$。GLA 给出闭式：
+此前工作（Mamba）声称必须物化 $N \times d \times d$ 的 hidden states 才能算 $d\alpha_t = (S_{t-1} \odot dS_t)\,\mathbf{1}$。GLA 给出闭式：
 
 $$
 \begin{aligned}
 d \log b_t &= q_t \odot dq_t - k_t \odot dk_t \\
-d \log \alpha_t &= \sum_{t \le i \le L} d \log b_i \qquad (\text{suffix sum})
+d \log \alpha_t &= \sum_{t \le i \le N} d \log b_i \qquad (\text{suffix sum})
 \end{aligned}
 $$
 

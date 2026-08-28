@@ -383,7 +383,7 @@ $$
 
 ——这与 Kimi Linear 27 层布局是同一个设计哲学，这次写成了明确规则。**全 NoPE**："Unlike Kimi K2 and Kimi K2.5, Kimi K3 follows the hybrid design of Kimi Linear and applies No Position Encoding (NoPE) to **all** MLA layers."
 
-另有 **AttnRes（Attention Residuals）**：把 attention 思想用到深度维——每层用可学习 pseudo-query $w$ 对 embedding 及所有先前 block 输出算 attention 权重 $\alpha$，选择性检索。Block AttnRes 把开销从 $O(Ld)$ 降到 $O(Nd)$。声称相对 K2 有约 2.5 倍的整体 scaling efficiency 提升。
+另有 **AttnRes（Attention Residuals）**：把 attention 思想用到深度维——每层用可学习 pseudo-query $w$ 对 embedding 及所有先前 block 输出算 attention 权重 $\alpha$，选择性检索。Block AttnRes 把开销从 $O(Nd)$ 降到 $O(N_b d)$（$N_b$ 为 block 数）。声称相对 K2 有约 2.5 倍的整体 scaling efficiency 提升。
 
 ### K3 对 KDA 的两处改进
 

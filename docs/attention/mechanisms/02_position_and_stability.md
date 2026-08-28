@@ -106,7 +106,7 @@ Qwen3-Next 官方给出的理由是："RoPE is partial — applied to only the f
 
 ## 4. YaRN：长上下文外推
 
-如果 RoPE 是在 4K 长度上训练的，却要跑到 128K，直接外推会崩溃，原因同样是旋转角进入了训练时未见过的区间。YaRN（[arXiv:2309.00071](https://arxiv.org/abs/2309.00071)）把此前的一系列做法统一成了两个函数：$g(m)$ 负责位置变换，$h(\theta_d)$ 负责频率变换。这里 $s = L'/L$ 是 scale factor，$\lambda_d = 2\pi/\theta_d = 2\pi b^{2d/|D|}$ 是第 $d$ 维的波长：
+如果 RoPE 是在 4K 长度上训练的，却要跑到 128K，直接外推会崩溃，原因同样是旋转角进入了训练时未见过的区间。YaRN（[arXiv:2309.00071](https://arxiv.org/abs/2309.00071)）把此前的一系列做法统一成了两个函数：$g(m)$ 负责位置变换，$h(\theta_d)$ 负责频率变换。这里 $s = N'/N$ 是 scale factor，$\lambda_d = 2\pi/\theta_d = 2\pi b^{2d/|D|}$ 是第 $d$ 维的波长：
 
 | 方法 | $g(m)$ | $h(\theta_d)$ | 备注 |
 |---|---|---|---|
@@ -116,7 +116,7 @@ Qwen3-Next 官方给出的理由是："RoPE is partial — applied to only the f
 | **Dynamic NTK** | 推理时按当前 seqlen 动态更新 $s$ | 同 NTK-aware | 免微调最佳；**必须缓存 pre-RoPE 的 k** |
 | **YaRN** | NTK-by-parts + attention scaling | 同上 | 综合最优 |
 
-**ramp function（Eq. 18）**，$r(d) = L/\lambda_d$：
+**ramp function（Eq. 18）**，$r(d) = N/\lambda_d$：
 
 $$
 \gamma(r) = \begin{cases}

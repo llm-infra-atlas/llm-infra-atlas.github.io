@@ -1,6 +1,6 @@
 # 00 · Attention 基础：从 Q/K/V 到 KV cache
 
-本章的两个子章——[Attention 机制](./mechanisms/README.md) 与 [FlashAttention](./fa/README.md)——讨论的都是「标准 attention 之后」的问题：前者研究定义本身可以怎么改，后者研究定义给定时怎么在硬件上算得快。它们默认读者已经能随手写出 scaled dot-product attention，并且知道 decode 阶段的 KV cache 是什么。这一篇把这块地基补齐：从「attention 到底在算什么」的直觉讲起，把 $Q, K, V$、softmax、multi-head、causal mask、KV cache 逐个推一遍，最后算一笔复杂度账。读完这一篇，后文里「$[L, L]$ 中间矩阵」「每 token cache 是 $2 h_{kv} d_h$ 个元素」这类说法就都有了出处。
+本章的两个子章——[Attention 机制](./mechanisms/README.md) 与 [FlashAttention](./fa/README.md)——讨论的都是「标准 attention 之后」的问题：前者研究定义本身可以怎么改，后者研究定义给定时怎么在硬件上算得快。它们默认读者已经能随手写出 scaled dot-product attention，并且知道 decode 阶段的 KV cache 是什么。这一篇把这块地基补齐：从「attention 到底在算什么」的直觉讲起，把 $Q, K, V$、softmax、multi-head、causal mask、KV cache 逐个推一遍，最后算一笔复杂度账。读完这一篇，后文里「$[N, N]$ 中间矩阵」「每 token cache 是 $2 h_{kv} d_h$ 个元素」这类说法就都有了出处。
 
 ## 1. attention 在做什么
 
@@ -8,7 +8,7 @@
 
 ## 2. Q、K、V 三种角色
 
-设输入是 $L$ 个 token 的表示 $X \in [L, d]$。attention 先对同一个 $X$ 做三次不同的线性投影，得到三组向量：
+设输入是 $N$ 个 token 的表示 $X \in [N, d]$。attention 先对同一个 $X$ 做三次不同的线性投影，得到三组向量：
 
 $$
 Q = XW_Q, \qquad K = XW_K, \qquad V = XW_V
@@ -29,7 +29,7 @@ $$
 第二步沿 $S$ 的**行方向**做 softmax：
 
 $$
-P_{ij} = \frac{\exp(S_{ij})}{\sum_{j'=1}^{L} \exp(S_{ij'})}
+P_{ij} = \frac{\exp(S_{ij})}{\sum_{j'=1}^{N} \exp(S_{ij'})}
 $$
 
 于是每一行都是一个和为 1 的概率分布——第 $i$ 个 token 决定「把注意力分给全序列」的方案。
@@ -37,16 +37,16 @@ $$
 第三步按权重混合 value：$O = PV$，即
 
 $$
-o_i = \sum_{j=1}^{L} P_{ij}\, v_j
+o_i = \sum_{j=1}^{N} P_{ij}\, v_j
 $$
 
 第 $i$ 行输出只由第 $i$ 个 query 和全部 KV 决定，这正是后面 FlashAttention 能按行块切分计算的数学基础。三个矩阵的 shape 值得记住，本章所有关于显存与 IO 的讨论都建立在它们之上：
 
 | 量 | shape | 说明 |
 |---|---|---|
-| $Q, K, V$ | $[L, d_k]$ / $[L, d_k]$ / $[L, d_v]$ | 每行一个 token |
-| $S, P$ | $[L, L]$ | 随序列长度**平方**增长 |
-| $O$ | $[L, d_v]$ | 与输入同形状 |
+| $Q, K, V$ | $[N, d_k]$ / $[N, d_k]$ / $[N, d_v]$ | 每行一个 token |
+| $S, P$ | $[N, N]$ | 随序列长度**平方**增长 |
+| $O$ | $[N, d_v]$ | 与输入同形状 |
 
 ![Scaled Dot-Product Attention：MatMul、Scale、可选的 Mask、SoftMax、再与 V 做 MatMul](assets/arxiv/1706.03762_sdpa.png)
 
@@ -62,7 +62,7 @@ $$
 \mathrm{MHA}(X) = \mathrm{Concat}(\mathrm{head}_1, \dots, \mathrm{head}_h)\, W_O
 $$
 
-每个 head 的维度 $d_h = d / h$（$d_k = d_v = d_h$），$h$ 个 head 各自学出一套 $W_i^Q, W_i^K, W_i^V$，可以在不同的表示子空间里捕捉不同的依赖；最后把 $h$ 个 $[L, d_h]$ 的输出拼回 $[L, d]$，再经 $W_O$ 混合一次。由于维度被均分，总计算量与单头 $d$ 维 attention 大致相同，多出来的只是 $h$ 行独立的概率分布。工程上 $Q, K, V$ 通常存成 $[L, h, d_h]$ 一个张量，head 维只是多出来的一根轴——后文说的「$S, P$ 是 $[L, L]$」严格说是 per head 的，总中间量还要乘 $h$。
+每个 head 的维度 $d_h = d / h$（$d_k = d_v = d_h$），$h$ 个 head 各自学出一套 $W_i^Q, W_i^K, W_i^V$，可以在不同的表示子空间里捕捉不同的依赖；最后把 $h$ 个 $[N, d_h]$ 的输出拼回 $[N, d]$，再经 $W_O$ 混合一次。由于维度被均分，总计算量与单头 $d$ 维 attention 大致相同，多出来的只是 $h$ 行独立的概率分布。工程上 $Q, K, V$ 通常存成 $[N, h, d_h]$ 一个张量，head 维只是多出来的一根轴——后文说的「$S, P$ 是 $[N, N]$」严格说是 per head 的，总中间量还要乘 $h$。
 
 ![Multi-Head Attention：Q、K、V 各自经 Linear 投影成 h 份，并行做 h 次 scaled dot-product attention，Concat 后再过一次 Linear](assets/arxiv/1706.03762_mha.png)
 
@@ -84,22 +84,22 @@ $$
 
 ## 6. prefill、decode 与 KV cache
 
-上面的写法是「一次算完 $L$ 个 token」，对应训练，也对应推理的 prefill 阶段（处理 prompt）。推理的 decode 阶段是另一种形态：自回归地逐 token 生成，每步只多出一个新 token。
+上面的写法是「一次算完 $N$ 个 token」，对应训练，也对应推理的 prefill 阶段（处理 prompt）。推理的 decode 阶段是另一种形态：自回归地逐 token 生成，每步只多出一个新 token。
 
 关键观察是：生成第 $t+1$ 个 token 时，需要的只是**新 token 的一行 query** $q_t$，以及**全部历史**的 $k_1, \dots, k_t$ 和 $v_1, \dots, v_t$。历史的 $K, V$ 在之前的步里已经算过、且不会再变，重算一遍纯属浪费——于是把它们缓存起来，每步只做一次 $[1, d_k] \times [d_k, t]$ 的匹配和一次加权求和。这份缓存就是 KV cache：每生成一个 token，每层追加一行 K、一行 V，每层每 token 占 $2 h_{kv} d_h$ 个元素（$h_{kv}$ 是 KV head 数，MQA/GQA/MLA 改的就是这个因子）。
 
-decode 的瓶颈因此和 prefill 完全不同。每生成一个 token，计算量只有 $O(Ld)$，但要把整个 KV cache 从 HBM 读一遍，访存量是 $O(L)$ 乘以层数——arithmetic intensity 极低，decode 是彻底的 memory-bound。llama-3-70B 级别的模型在 128K 上下文里，仅读 cache 每步就要搬几十 GB（具体算法见 [Attention 机制](./mechanisms/README.md) 第 1 节）。「decode 是 memory-bound」这个结论在本章会被当作公理使用。
+decode 的瓶颈因此和 prefill 完全不同。每生成一个 token，计算量只有 $O(Nd)$，但要把整个 KV cache 从 HBM 读一遍，访存量是 $O(N)$ 乘以层数——arithmetic intensity 极低，decode 是彻底的 memory-bound。llama-3-70B 级别的模型在 128K 上下文里，仅读 cache 每步就要搬几十 GB（具体算法见 [Attention 机制](./mechanisms/README.md) 第 1 节）。「decode 是 memory-bound」这个结论在本章会被当作公理使用。
 
 ## 7. 一笔复杂度账
 
-把上面各节的结论收拢成一张表（per layer，$L$ 为序列长）：
+把上面各节的结论收拢成一张表（per layer，$N$ 为序列长）：
 
-| 量 | 随 $L$ 的增长 | 出处 |
+| 量 | 随 $N$ 的增长 | 出处 |
 |---|---|---|
-| prefill attention 的 FLOPs | $O(L^2 d)$ | $QK^{\top}$ 与 $PV$ 两个 matmul |
-| 中间矩阵 $S, P$ | $O(L^2)$ 元素 | §3 的 shape 表 |
-| decode 每 token 计算 | $O(Ld)$ | 一行 query 对全部 KV |
-| decode 每 token 访存 | $O(L)$（读全 cache） | §6 |
-| KV cache 总量 | $2 h_{kv} d_h \cdot L$，逐层累积 | §6 |
+| prefill attention 的 FLOPs | $O(N^2 d)$ | $QK^{\top}$ 与 $PV$ 两个 matmul |
+| 中间矩阵 $S, P$ | $O(N^2)$ 元素 | §3 的 shape 表 |
+| decode 每 token 计算 | $O(Nd)$ | 一行 query 对全部 KV |
+| decode 每 token 访存 | $O(N)$（读全 cache） | §6 |
+| KV cache 总量 | $2 h_{kv} d_h \cdot N$，逐层累积 | §6 |
 
-坏消息集中在两处：随 $L$ **平方**增长的中间量与计算，以及随 $L$ **线性**增长、每步都要全量重读的 cache。这两个坏消息分别对应本章的两条线索——[FlashAttention](./fa/README.md) 不改定义，用 tiling 和 online softmax 让 $[L, L]$ 中间量不落 HBM，把 kernel 侧的访存压到 $O(L)$；[Attention 机制](./mechanisms/README.md) 则改动定义本身，从「每个 token 要缓存多少个数」和「每步要读多少历史」两个方向压缩 cache。回到 [本章 README](./README.md) 可以看到这两条线索的全景图。
+坏消息集中在两处：随 $N$ **平方**增长的中间量与计算，以及随 $N$ **线性**增长、每步都要全量重读的 cache。这两个坏消息分别对应本章的两条线索——[FlashAttention](./fa/README.md) 不改定义，用 tiling 和 online softmax 让 $[N, N]$ 中间量不落 HBM，把 kernel 侧的访存压到 $O(N)$；[Attention 机制](./mechanisms/README.md) 则改动定义本身，从「每个 token 要缓存多少个数」和「每步要读多少历史」两个方向压缩 cache。回到 [本章 README](./README.md) 可以看到这两条线索的全景图。

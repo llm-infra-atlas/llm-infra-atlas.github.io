@@ -98,7 +98,7 @@ H_{[t]}^{r} &= \sum_{i=1}^{r} ( \beta^{i} v^{i} (k^{i})^{\top} \cdot \prod_{j=i+
 \end{aligned}
 $$
 
-朴素计算需要为每一步物化一个 $d_k \times d_k$ 矩阵，即 $O(d^2)$ 内存乘以 $L$ 步，I/O 上不可接受。
+朴素计算需要为每一步物化一个 $d_k \times d_k$ 矩阵，即 $O(d^2)$ 内存乘以 $N$ 步，I/O 上不可接受。
 
 ### 2.1 WY 表示
 
@@ -192,7 +192,7 @@ $$
 A_{ij} = k_j^{\top} P_{j+1}^{i}\, q_i \quad (j \le i) \qquad \Rightarrow \qquad A = (Q K^{\top} \odot M)\, T
 $$
 
-计算 $T$ 需要 $L \times L$ 矩阵求逆，随序列长度三次方增长，所以不用于训练。但这个 "attention 矩阵" 对 RNN 可解释性研究有价值——它让 DeltaNet 有了一个可以画出来的 attention map。
+计算 $T$ 需要 $N \times N$ 矩阵求逆，随序列长度三次方增长，所以不用于训练。但这个 "attention 矩阵" 对 RNN 可解释性研究有价值——它让 DeltaNet 有了一个可以画出来的 attention map。
 
 ### 2.5 已知局限
 
