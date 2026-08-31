@@ -76,6 +76,8 @@ userbuffers 有几个关键的技术点值得了解，这部分实现在 Transfo
 
 > 适用范围上，`tp_comm_overlap` 主要在 TP 域处于单机内、走 NVLink 的情况下才划算，因为它依赖 P2P 共享 buffer。跨机的 TP（这种情况很少见）用不上这个优化。
 
+本节关注的是 Megatron/TransformerEngine 怎样启用这套能力。至于算子内部为什么要区分 compute tile、epilogue subtile 与 communication chunk，GEMM+RS / GEMM+AR / AG+GEMM 三类数据流怎样统一成 producer–consumer pipeline，以及 persistent worker、in-flight 和 buffer ownership 如何配合，见 [01 · 通算融合：GEMM 与 collective 的 tile 流水](../../cuda_dsl/01_fused_collective_gemm.md)。
+
 ## 4. 与其它并行的 overlap 耦合
 
 TP 的 overlap 并不是孤立发生的，它和 DP、PP 的通信会抢同一套硬件资源：

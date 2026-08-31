@@ -175,6 +175,7 @@ nav:
           - Nsight Compute: profiling/03_nsight_compute.md
       - CUDA & DSL:
           - cuda_dsl/README.md
+          - 通算融合基础: cuda_dsl/01_fused_collective_gemm.md
 
 theme:
   name: material

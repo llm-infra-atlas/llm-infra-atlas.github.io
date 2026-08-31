@@ -62,7 +62,7 @@
 | [HPC · 集群与网络](docs/hpc/README.md) | GPU 硬件参数、roofline 模型、scale-up/scale-out 网络、集合通信、RDMA/IB verbs、大规模可靠性 |
 | [PyTorch](docs/torch/README.md) | 框架开发常用的底层 API：内存布局、autograd、distributed、CUDA stream/graph、compile、caching allocator |
 | [Profiling](docs/profiling/README.md) | 性能与显存观测：torch.profiler、显存 snapshot/memory_viz、Nsight Systems / Compute |
-| [CUDA & DSL](docs/cuda_dsl/README.md) | CUDA 编程基础；Triton / CuTile / CuteDSL |
+| [CUDA & DSL](docs/cuda_dsl/README.md) | CUDA 编程基础与 Triton / CuTile / CuteDSL；GEMM+collective 通算融合的 tile/chunk 流水与 persistent kernel |
 
 **不知道从哪开始？** 三条路线供参考：
 
