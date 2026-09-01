@@ -1,6 +1,6 @@
 # CUDA & DSL
 
-> 本章讨论 LLM 算子如何落到 GPU 执行模型上。面向单卡 kernel 编程，推荐参考 CMU Machine Learning Systems 课程系列的 [Modern GPU Programming for ML Systems](https://mlc.ai/modern-gpu-programming-for-mlsys/zh/index.html)：它以 GEMM 和 FlashAttention 4 为贯穿示例，从 GPU 执行模型、数据布局、TMA 异步数据搬运、tensor core 一路讲到 warp specialization 与完整的 attention kernel。本文先整理这套开发栈；相邻专题再把它用于多卡通算融合。
+> 本章仍在持续维护中。考虑到这块的知识量与优质参考资料都很多，本页倾向于以「整理优质现有资源」的方式呈现，而不是从头重写一套教材。面向 LLM 算子的 GPU 编程，推荐参考 CMU Machine Learning Systems 课程系列的 [Modern GPU Programming for ML Systems](https://mlc.ai/modern-gpu-programming-for-mlsys/zh/index.html)：以 GEMM 和 FlashAttention 4 为贯穿示例，从 GPU 执行模型、数据布局、TMA 异步数据搬运、tensor core 一路讲到 warp specialization 与完整的 attention kernel，与本章的主题高度重合。本页保持这一基调；[01 · 通算融合](./01_fused_collective_gemm.md) 则是一次专题研讨，把视线从单卡 kernel 延伸到多卡场景，讨论 GEMM 与 collective 如何按 tile/chunk 接成流水。
 
 ## 阅读顺序
 
