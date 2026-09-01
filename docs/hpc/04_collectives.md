@@ -489,7 +489,7 @@ flowchart TB
 
 GIN 有两个后端（细节见论文 [GPU-Initiated Networking for NCCL](https://arxiv.org/abs/2511.15076)）：一个是 **GDAKI**（DOCA GPUNetIO，由 SM 写 doorbell），一个是 **Proxy**（GPU 向 CPU 发 64B 无锁描述符，任意 RDMA NIC 都能用）。同步机制分为 `signal`（表示远端完成）和 `flush`/`counter`（表示本地发送缓冲可以复用了）。DeepEP V2 换用 Gin，正是为了能复用框架自带的 `ncclComm`，同时去掉独立的 NVSHMEM heap（详见 [06 · DeepEP：V1 (legacy/NVSHMEM) 与 V2 (elastic/NCCL Gin)](../moe/06_deepep.md)）。
 
-TransformerEngine 的 **userbuffers**（`tp_comm_overlap`）在训练侧是同一思路的对应实现：activation 被放进预先注册好的窗口，AG/RS 按 GEMM tile 做流水，详见 [04 · TP/SP 的通信-计算 overlap 与工程优化](../parallel/02_tp_sp/04_overlap_and_optimizations.md)。
+TransformerEngine 的 **userbuffers**（`tp_comm_overlap`）在训练侧是同一思路的对应实现：activation 被放进预先注册好的窗口，AG/RS 按 GEMM tile 做流水。框架开关与 TP/SP 调度见 [04 · TP/SP 的通信-计算 overlap 与工程优化](../parallel/02_tp_sp/04_overlap_and_optimizations.md)；tile/chunk、persistent worker、in-flight 与 buffer ownership 的算子设计见 [01 · 通算融合：GEMM 与 collective 的 tile 流水](../cuda_dsl/01_fused_collective_gemm.md)。
 
 ---
 
