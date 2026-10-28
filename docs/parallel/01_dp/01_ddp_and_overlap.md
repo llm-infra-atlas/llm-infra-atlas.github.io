@@ -1,10 +1,38 @@
 # 01 · Megatron DDP：连续 buffer 与通信 overlap
 
-> 上一篇建立了显存账本和 ZeRO 频谱的整体框架，这一篇要把 Megatron 的 `DistributedDataParallel` 拆开看清楚。需要先说明的是，它不是 PyTorch 自带的那个 DDP，而是专门为大模型训练定制的版本，核心思路是用一块连续的 grad buffer，配合 bucket 分块，让反向传播边算梯度边发通信。这套基础设施不只是 DDP 自己用——ZeRO-1（也就是下一篇讲的 distributed optimizer）和 03 的 FSDP 都是在它之上复用的。
+> 上一篇建立了显存账本和 ZeRO 频谱的整体框架，这一篇要把 Megatron 的 `DistributedDataParallel` 拆开看清楚。需要先说明的是，它不是 PyTorch 自带的那个 DDP，而是专门为大模型训练定制的版本，核心思路是用一块连续的 grad buffer，配合 bucket 分块，让反向传播边算梯度边发通信。这套基础设施不只是 DDP 自己用——下一篇的 distributed optimizer 复用了这套机制；FSDP 采用相近的分组通信思想，但具体 buffer 管理取决于实现。
 
 代码：`distributed_data_parallel.py`, `param_and_grad_buffer.py`。
 
 ---
+
+## 0. 从训练目标到梯度同步
+
+设 rank $r$ 有 $B$ 个样本，以本地平均 loss $\mathcal L_r$ 做 backward。等 batch 的全局目标与梯度为
+
+$$
+\mathcal L=\frac{1}{N}\sum_{r=0}^{N-1}\mathcal L_r,
+\qquad
+\nabla_\theta\mathcal L=\frac{1}{N}\sum_{r=0}^{N-1}\nabla_\theta\mathcal L_r.
+$$
+
+DDP 利用的是求导与求和的可交换性。各 rank 从相同参数、相同 optimizer state 出发，使用规约后的相同梯度更新，就能保持副本一致。浮点规约顺序可能改变末位结果，因此这里说的是算法等价，不是跨并行配置逐位一致。BatchNorm 等依赖本地 batch 统计的操作还需要单独处理。
+
+变长训练中，若 rank $r$ 有 $n_r$ 个有效 token，则全局 loss 应为
+
+$$
+\mathcal L=\frac{\sum_r n_r\mathcal L_r}{\sum_r n_r}.
+$$
+
+框架默认的平均梯度不自动修正不等长 batch 的权重；loss scaling 必须与 reduction 约定一致。
+
+### Bucket 为什么能提前同步
+
+反向传播按反向层序产生梯度。一组参数的梯度一旦完成最终累积，就可以开始同步，不必等待其余层。bucket 让多个小 tensor 共享一次 collective 的启动成本，而异步通信使后续 backward 有机会覆盖它。
+
+设 bucket 字节数为 $B_k$，启动开销为 $\alpha$，有效带宽为 $\beta$，其通信耗时粗略为 $\alpha+B_k/\beta$。bucket 小时就绪早，但启动次数多；bucket 大时带宽利用率较好，却容易在 backward 末尾留下较长通信尾部。优化目标是缩短这段未被覆盖的尾部，不是让 bucket 越大或越小越好。
+
+所有 rank 必须以一致次序发起对应 collective。某个 rank 的数据准备或动态分支变慢，也会让其他 rank 等它；通信 timeline 上的等待不一定是网络带宽不足。下面再看 Megatron 如何用连续 buffer 实现这套调度。
 
 ## 1. 用一块连续 buffer 代替逐参数 `.grad`
 
@@ -12,7 +40,7 @@
 
 1. 把同 dtype 的所有梯度预先分配在一块连续的大 buffer 里（`grad_data`），每个参数的 `main_grad` 只是这块 buffer 上的一个 view，不再是独立的 tensor。
 2. backward 时，wgrad 通过 `gradient_accumulation_fusion` 直接累加进对应的 view 里（详见[01 · ColumnParallelLinear / RowParallelLinear 与核心 autograd](../02_tp_sp/01_linear_layers.md)），不会再产生一份独立的 `.grad`。
-3. 把这块 buffer 切成若干 bucket（默认大小是 `max(40MB, 1MB×DP)`，见 [[megatron-lm:megatron/core/distributed/distributed_data_parallel.py#L69]]），通信以 bucket 为单位来发起，这样颗粒度更大、kernel 数量更少，也能和后续层的 backward 计算 overlap 起来。
+3. 把这块 buffer 切成若干 bucket（默认大小按元素数计为 `max(40M, 1M×DP)`，FP32 梯度下还需乘每元素 4 字节，见 [[megatron-lm:megatron/core/distributed/distributed_data_parallel.py#L69]]），通信以 bucket 为单位来发起，这样颗粒度更大、kernel 数量更少，也能和后续层的 backward 计算 overlap 起来。
 
 ```
 grad_data (连续, 按 dtype):
@@ -105,7 +133,7 @@ forward (各 rank 不同 micro-batch)
        ZeRO-1: 用本 rank 的梯度分片更新本 rank 的参数分片 → all-gather 参数 (02)
 ```
 
-> 把这一节串起来看，DDP 的全部工程努力都可以归结为一件事：把一次大的 all-reduce 拆成 `N` 个 bucket 各自的异步通信，塞进 backward 计算的间隙里。而从 DDP 升级到 ZeRO-1，代码上只是把 `reduce_scatter` 换掉 `all_reduce` 这一行，底层的连续 buffer、bucket、grad-ready hook 这套基础设施完全复用，不需要重新搭一遍。
+> 把这一节串起来看，DDP 的全部工程努力都可以归结为一件事：把一次大的 all-reduce 拆成 `N` 个 bucket 各自的异步通信，塞进 backward 计算的间隙里。Megatron 的 ZeRO-1 路径可以复用连续 buffer、bucket 和 grad-ready hook；除此之外，还需维护 optimizer shard、局部更新和更新后的参数 all-gather，不能把整个变化理解成替换一行 collective。
 
 ---
 

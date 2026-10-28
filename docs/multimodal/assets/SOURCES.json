@@ -1,0 +1,510 @@
+[
+  {
+    "file": "arxiv/2006.11239_ddpm_pgm.png",
+    "title": "DDPM：前向 q 逐步加噪 x₀→x_T，反向 p_θ 逐步去噪",
+    "source": "https://arxiv.org/abs/2006.11239",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b9a090661ae37a40cfcacd9c2e86c5ef4a335a277ad1342f622c336a4a4f6601",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2006.11239",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2010.11929_vit.png",
+    "title": "ViT：图像切 patch → 线性 patch embedding + 位置编码 → L 层 Transformer Encoder",
+    "source": "https://arxiv.org/abs/2010.11929",
+    "image_url": "https://arxiv.org/html/2010.11929v2/model_scheme.png",
+    "retrieved": null,
+    "sha256": "b1989b320628d9e28eb45d0ef184055f1c0d87a75f8658e61c16c903a0aa5c8c",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2010.11929",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001969
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2012.09841_vqgan_model.png",
+    "title": "VQGAN：CNN 编/解码 + codebook 量化 + 自回归 transformer 建模 token",
+    "source": "https://arxiv.org/abs/2012.09841",
+    "image_url": "https://arxiv.org/html/2012.09841v3/modelfigure.png",
+    "retrieved": null,
+    "sha256": "fd6ac4356a99225df9990d264723a2b57f526da653371e9417be1bee0f34cc14",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2012.09841",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002866
+    },
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2103.00020_clip_diagram.png",
+    "title": "CLIP：图像 encoder 与文本 encoder 把配对样本拉近、把 batch 内其它配对推远",
+    "source": "https://arxiv.org/abs/2103.00020",
+    "image_url": "https://arxiv.org/html/2103.00020v1/main-diagrams.png",
+    "retrieved": null,
+    "sha256": "0098bf9242051c0f6b6b4814e70d8d91342e5c26503019836e7a53a813a9acb7",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2103.00020",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001749
+    },
+    "references": [
+      "docs/multimodal/01_contrastive_pretrain.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2112.10752_ldm_arch.png",
+    "title": "Latent Diffusion：VAE 编码到 latent → U-Net 去噪 → 解码；条件经 cross-attention 注入",
+    "source": "https://arxiv.org/abs/2112.10752",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "7d7d20e4efcd9ab4bfcf3bb1a1f8e8f8c4d26e340ee8d99e3bf94b4e13d1d42d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2112.10752",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2204.14198_flamingo_overview.png",
+    "title": "Flamingo：视觉 encoder → Perceiver Resampler → 插入冻结 LM 的 gated xattn",
+    "source": "https://arxiv.org/abs/2204.14198",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "0dc9ecb8ac86e8e49d816bf82ec4552ae7ee9a8a9499576d88b7bcf20bfc6ce0",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2204.14198",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2204.14198_gated_xattn.png",
+    "title": "gated xattn-dense：tanh 门控，初始化为恒等",
+    "source": "https://arxiv.org/abs/2204.14198",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "be308819621ff990d1482d4fce572ec05e591fda6f8cb5ca2787790573c288c8",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2204.14198",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2204.14198_perceiver.png",
+    "title": "Flamingo Perceiver Resampler：learned latent 当 Q，变长视觉特征当 K/V，输出长度恒为 R",
+    "source": "https://arxiv.org/abs/2204.14198",
+    "image_url": "https://arxiv.org/html/2204.14198v2/fig3_resampler.png",
+    "retrieved": null,
+    "sha256": "e9c66a86cbc10b569cf041e81cbe52fa9f05f26ad832b79b6918b64ceda7a8d5",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2204.14198",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001742
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2210.02747_flow_ot.png",
+    "title": "flow matching：最优传输式的近直线轨迹，可近乎一步 Euler 积分",
+    "source": "https://arxiv.org/abs/2210.02747",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f0b93a559098966f351416b0ecf18b126c353e43dc45bc09b716e4c2490b7a5b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2210.02747",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2212.04356_whisper.png",
+    "title": "Whisper：波形 → log-mel → 卷积下采样 → Transformer encoder",
+    "source": "https://arxiv.org/abs/2212.04356",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "2b25fb2ed94da7273e10db82f1b7383b38d1b3ee1cc09037c87ec95448de3525",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2212.04356",
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2212.09748_dit_block.png",
+    "title": "DiT：patchify latent → Transformer block（含 adaLN-Zero 条件注入）",
+    "source": "https://arxiv.org/abs/2212.09748",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b00abee0372882e18c2a39211d8e49a1ac24e1fffb5ad28207aa412f8df56b2a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2212.09748",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2301.12597_blip2_overview.png",
+    "title": "BLIP-2：两阶段预训练一个轻量 Q-Former，桥接冻结 ViT 与冻结 LLM",
+    "source": "https://arxiv.org/abs/2301.12597",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "2bb64f4607b221b682f4f63a058895405c6e5b35d37b374cc75aba25b5277b1c",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2301.12597",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2301.12597_blip2_qformer.png",
+    "title": "Q-Former：32 个 query 对冻结 ViT 做 cross-attn；三种 self-attention mask 分别服务 ITC / ITM / ITG",
+    "source": "https://arxiv.org/abs/2301.12597",
+    "image_url": "https://arxiv.org/html/2301.12597v3/fig2-v5.png",
+    "retrieved": null,
+    "sha256": "0ec0b0e8dac601f398bb46da22e7cd6ed80f0796f2e40aee1ad46d92d8495769",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2301.12597",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.005612
+    },
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2303.15343_siglip_alg1.png",
+    "title": "SigLIP Algorithm 1：pairwise sigmoid，对角 +1 / 其余 −1，除以 batch 大小 n",
+    "source": "https://arxiv.org/abs/2303.15343",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e3ce46955a536782ea38227abcdecf8871e1ad277beb20a6b0f1067bfb446f6d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2303.15343",
+    "references": [
+      "docs/multimodal/01_contrastive_pretrain.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2303.15343_siglip_fig1.png",
+    "title": "SigLIP：三台设备用文本表征轮转算完全部 pair，任何时刻只物化一块 4×4",
+    "source": "https://arxiv.org/abs/2303.15343",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "744cacd759e37c12c8de295d07ccc540a237e42b77605f2fb7cd2d7078001c3b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2303.15343",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/multimodal/01_contrastive_pretrain.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2304.08485_llava_arch.png",
+    "title": "LLaVA：CLIP ViT-L/14 → 线性 W → 与 Vicuna 文本拼接",
+    "source": "https://arxiv.org/abs/2304.08485",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "af50c3cc3f5cc07ca87b8fe7c40102299cab4d5ab48b0a37832ffeb290d4d9c6",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2304.08485",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2310.03744_anyres.png",
+    "title": "LLaVA-1.5-HD：切网格独立编码，再拼全局 thumbnail",
+    "source": "https://arxiv.org/abs/2310.03744",
+    "image_url": "https://arxiv.org/html/2310.03744v2/high_res_arch_v2.png",
+    "retrieved": null,
+    "sha256": "5b104f40626f9ab8efd06480d4dd9d84d29598e69dae89b47ebb697c85be465f",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.03744",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.00621
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2310.03744_llava15.png",
+    "title": "LLaVA-1.5：MLP connector + 学术数据 + 更高分辨率",
+    "source": "https://arxiv.org/abs/2310.03744",
+    "image_url": "https://arxiv.org/html/2310.03744v2/figs/architecture.png",
+    "retrieved": null,
+    "sha256": "5772fcf690efff6e3a6252248c7ec4da2b3e231813d0e65f624cbbda2fa465b3",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.03744",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2403.03206_mmdit.png",
+    "title": "SD3 MMDiT：文本与图像各一条 stream 的双流 DiT block",
+    "source": "https://arxiv.org/abs/2403.03206",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "32cdb1074bad038531fabb5922a16563c01a46abdb4f37d7a3f2b7b1acfc9c41",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2403.03206",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/multimodal/05_generation.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2404.16821_internvl_arch.png",
+    "title": "InternVL 1.5：InternViT-6B + pixel-shuffle + MLP + InternLM2",
+    "source": "https://arxiv.org/abs/2404.16821",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "6960ca490e6f3c9ccd2085458afb1749d8ba72ebaad5dabc628454931a2600f2",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2404.16821",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2404.16821_internvl_dynres.png",
+    "title": "InternVL：按预定义长宽比选网格，切 448² tile + thumbnail",
+    "source": "https://arxiv.org/abs/2404.16821",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1234ac1beacc515b5f215aa3582cdd08f598821b9a20d88a939dc4b4dedc6dd4",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2404.16821",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2405.09818_chameleon.png",
+    "title": "Chameleon：VQ tokenizer 把图变成离散 token，与文本共用一个 transformer",
+    "source": "https://arxiv.org/abs/2405.09818",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3d5978981eaf1df6b49d52fbb522d9ca57944a31eb2d9d70600f3f886540d033",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.09818",
+    "references": [
+      "docs/multimodal/04_fusion_and_connectors.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2409.12191_mrope.png",
+    "title": "M-RoPE：位置拆成 temporal / height / width",
+    "source": "https://arxiv.org/abs/2409.12191",
+    "image_url": "https://arxiv.org/html/2409.12191v2/images/mrope.png",
+    "retrieved": null,
+    "sha256": "5189935646f76735f04feed32b2a1a8e2b9f8f828acdb614749d41668044458c",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2409.12191",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2409.12191_qwen2_vl_arch.jpg",
+    "title": "Qwen2-VL：ViT 按原始分辨率出 patch，2×2 合并后送入 LLM",
+    "source": "https://arxiv.org/abs/2409.12191",
+    "image_url": "https://arxiv.org/html/2409.12191v2/images/qwen2_vl_frame.jpg",
+    "retrieved": null,
+    "sha256": "7ca8916eab6a5df8c83a2815917ed886b95403de443ab7be5f59a18399877092",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2409.12191",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2410.13848_janus.png",
+    "title": "Janus：理解走 SigLIP，生成走 VQ tokenizer，汇入同一个自回归 Transformer",
+    "source": "https://arxiv.org/abs/2410.13848",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3f5dd95c8ba54dcd605b7f2f5b5fd06cad4a0ca8a5dba93bf9c3f0cd5eb500bc",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2410.13848",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.10302_deepseek_vl2.png",
+    "title": "DeepSeek-VL2：共享 SigLIP 跑 tile，pixel-shuffle 后经 adaptor 进 MoE LLM",
+    "source": "https://arxiv.org/abs/2412.10302",
+    "image_url": "https://arxiv.org/html/2412.10302v1/main_framework_v2.png",
+    "retrieved": null,
+    "sha256": "fceb5cebc4c4f73efad36da0b5c6a5ae50a7186ef3a08bad1c508f10e3e1ee55",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.10302",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001941
+    },
+    "references": [
+      "docs/multimodal/03_classic_vlms.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2412.10302_tiling.png",
+    "title": "DeepSeek-VL2：全局视图 + 动态 tile，flatten 时插入换行和 view separator",
+    "source": "https://arxiv.org/abs/2412.10302",
+    "image_url": "https://arxiv.org/html/2412.10302v1/cropping_strategy_v2.png",
+    "retrieved": null,
+    "sha256": "661f7b53d2023bea70fe3d7c36f39ee1ed64a8b9b969ad2fd89ac830dea44e11",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.10302",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002106
+    },
+    "references": [
+      "docs/multimodal/02_encoders.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

@@ -1,0 +1,335 @@
+[
+  {
+    "file": "arxiv/1512.03385_residual_block.png",
+    "title": "ResNet 的 residual building block：shortcut 与两层 3×3 卷积相加",
+    "source": "https://arxiv.org/abs/1512.03385",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "fdf3a73f80df090b690305d94f85177e1f0474983e1332686007293457454121",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1512.03385",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/1603.05027_identity_teaser.png",
+    "title": "Identity Mappings 论文的对比：原版 residual unit 在 add 之后还有 ReLU，pre-activation 把非线性全部挪进残差分支",
+    "source": "https://arxiv.org/abs/1603.05027",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "2527e11f53127743e7edd244d09d77a25e8186ae5e7ae2dc0ba213b366f82d69",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1603.05027",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/1706.03762_transformer.png",
+    "title": "原版 Transformer 的 encoder/decoder 栈：每个 sublayer 外包一层 Add & Norm",
+    "source": "https://arxiv.org/abs/1706.03762",
+    "image_url": "https://arxiv.org/html/1706.03762v7/Figures/ModalNet-21.png",
+    "retrieved": null,
+    "sha256": "56d69ccc192b90c3b93e5e285ff892f74753f970103939b40291945e106e9f79",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1706.03762",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2002.04745_pre_vs_post.png",
+    "title": "Xiong et al. 2020：Post-LN 与 Pre-LN 的并排结构",
+    "source": "https://arxiv.org/abs/2002.04745",
+    "image_url": "https://arxiv.org/html/2002.04745v2/img/pre-vs-post.PNG",
+    "retrieved": null,
+    "sha256": "26d1dcad2fc3ebba154cc58f1b5ce4426bbb197fc312cf302279dca24b8fe68a",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2002.04745",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2103.17239_layerscale.png",
+    "title": "CaiT 的 LayerScale：在 attention / FFN 出口乘可学习对角再加回 residual",
+    "source": "https://arxiv.org/abs/2103.17239",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9c240805bb3eb44bf6bc4a36168973d019a19a1e84a639499f545a763a90497a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2103.17239",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2203.00555_update_vs_depth.png",
+    "title": "DeepNorm：模型更新量随深度的曲线，用来说明「增量」必须被 bound 住",
+    "source": "https://arxiv.org/abs/2203.00555",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9f4c360c967fdb5f857b1e4a85ace42b1b45581365a9e5d636037bec6e49bc85",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2203.00555",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2304.14802_residual.png",
+    "title": "ResiDual：每个 block 同时更新归一化主干 x^ln 和从不进 LN 的对偶残差 x^d",
+    "source": "https://arxiv.org/abs/2304.14802",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "51dfc48003f4b78a796376f021d4924e991211b2dc61c9e7325ce40091478553",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2304.14802",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2402.02622_denseformer.png",
+    "title": "DenseFormer：在 Transformer block 之间插入 DWA，用静态权重混合更早各层",
+    "source": "https://arxiv.org/abs/2402.02622",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "d9ab273e06892a3f81f74e8b9b5b20d0ca511965e513796a3bba06716f42458a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2402.02622",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/02_attention_residual.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2409.19606_hc_overview.png",
+    "title": "HC 论文 Fig 2：residual / hyper-connections / depth-connections / width-connections",
+    "source": "https://arxiv.org/abs/2409.19606",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "63da53b6216ec100d96609dc0b22dfe15df2eee87e4060010f1498215f2b9f0d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2409.19606",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/residual/01_hyper_connections.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2409.19606_seq_parallel.png",
+    "title": "HC 把 n=2 时的串行排列与并行排列画成两种连接图案",
+    "source": "https://arxiv.org/abs/2409.19606",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c26d8d08f5b2881a53fd468a840491537877942e9e22600726bc8b80c18936ab",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2409.19606",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/residual/01_hyper_connections.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2410.17897_arch.png",
+    "title": "Value Residual 论文 Fig 1：Transformer / NeuTRENO / DenseFormer / ResFormer 多出来的跨层 skip 画在哪",
+    "source": "https://arxiv.org/abs/2410.17897",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "34e944005a9229038cf3088749aa3c37a8608cfe02ce8f9c64fdc5885301c89d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2410.17897",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/02_attention_residual.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2502.02732_pre_post_peri.png",
+    "title": "Peri-LN 论文把 LN 的三种放置画在同一个 residual block 上",
+    "source": "https://arxiv.org/abs/2502.02732",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "26f82ff67f29a0451d6574f92227b85381b9f1226800c5b4f7a613612785354a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.02732",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/00_identity_skip_and_norm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2502.12170_x2.png",
+    "title": "MUDDFormer：从静态稠密连接到 multiway 动态聚合，再到「一块吃四路输入」的 Transformer",
+    "source": "https://arxiv.org/abs/2502.12170",
+    "image_url": "https://arxiv.org/html/2502.12170v2/muddformer_arch.png",
+    "retrieved": null,
+    "sha256": "76bd623c53ca56aeb027fb290f770c0a152155b62feefef474dadd7d03f93b44",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.12170",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.005355
+    },
+    "references": [
+      "docs/residual/02_attention_residual.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2512.24880_x1.png",
+    "title": "mHC 论文对三种残差范式的并排示意：标准 residual、无约束 HC、流形约束 mHC",
+    "source": "https://arxiv.org/abs/2512.24880",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c58ef3364b2cfd12040f5871ee83f88e670460416629d2a94aac2e9fe63874db",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2512.24880",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2512.24880_x3.png",
+    "title": "HC 在 27B 上的传播不稳定性：单层映射还勉强，复合映射的前向/反向增益发散",
+    "source": "https://arxiv.org/abs/2512.24880",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "61c707b979baa80dc2711a03c5a6077a4e44d07023b3af8f2e4558a55887a8c7",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2512.24880",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/residual/01_hyper_connections.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2512.24880_x7.png",
+    "title": "mHC 约束后，复合映射的 Amax Gain 回到 O(1)",
+    "source": "https://arxiv.org/abs/2512.24880",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9a9d109a65b99aaf393b24a7d9f9aa1a32d4257146758963c97bb34699e3cea7",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2512.24880",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/residual/01_hyper_connections.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2606.19348_x2.png",
+    "title": "DeepSeek-V4 整网结构：CSA/HCA 混合 attention + DeepSeekMoE + 层间 mHC",
+    "source": "https://arxiv.org/abs/2606.19348",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b09403740a8c80a9b6eaee6c9ece73e99b6ae75711ff45824208bd7e4057d805",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2606.19348",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/residual/01_hyper_connections.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.18730_x1.png",
+    "title": "DAR：两路 stream 各自保留历史，经共享 Norm 出 K，再 α 融合、β 分裂，最后用 2×2 双随机式矩阵混残差",
+    "source": "https://arxiv.org/abs/2607.18730",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "dfc82582ca9102a18b5c5695052f77a4383c4204791c5fc77cf659a891c63202",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.18730",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/residual/02_attention_residual.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.24653_arch.png",
+    "title": "Kimi K3 Fig 2：KDA ×3 + Gated MLA + Stable LatentMoE，右侧竖线是 AttnRes 的 α、w",
+    "source": "https://arxiv.org/abs/2607.24653",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b284dada956303ab0721a3013649abe3ca5678dd38b656968fc2840e783ce2e1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.24653",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/residual/02_attention_residual.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

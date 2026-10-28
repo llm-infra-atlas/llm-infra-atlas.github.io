@@ -19,7 +19,7 @@ v_t^{\mathrm{old}} &= S_{t-1}^{\top} k_t, \qquad v_t^{\mathrm{new}} = \beta_t v_
 \end{aligned}
 $$
 
-语义是：先把当前 key $k_t$ 关联的旧值完整擦除，再写入新值——后者是旧值与新值按写入强度 $\beta_t$ 的线性插值。$\beta_t$ 接近 1 时完全替换，$\beta_t$ 接近 0 时完全保留。
+当 $\|k_t\|_2=1$ 时，语义是：先把当前 key $k_t$ 关联的旧值完整擦除，再写入新值——后者是旧值与新值按写入强度 $\beta_t$ 的线性插值。$\beta_t$ 接近 1 时完全替换，$\beta_t$ 接近 0 时完全保留。
 
 这正是 [`07`](./07_linear_decay_gating.md) §5 结尾那个 "capital of France" 例子需要的操作。
 
@@ -52,68 +52,74 @@ $$
 
 结果与化简形式一模一样。于是可以建立如下对应：
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  linear attention = 测试时回归（test-time regression）                  │
-│    · 状态 S       = fast weight，一个在推理时在线训练的线性回归模型       │
-│    · β_t          = 学习率                                             │
-│    · 门控 α_t     = weight decay / L2 正则                              │
-│    · 朴素 LA      = 对 −⟨Sᵀk_t, v_t⟩ 做 GD（Hebbian，纯累加，无纠错）    │
-│    · DeltaNet     = 对 ½‖Sᵀk_t − v_t‖² 做 GD（有纠错：只写入预测残差）   │
-└───────────────────────────────────────────────────────────────────────┘
-```
+从 test-time regression 看，状态 $S$ 是在线更新的 fast weight，$\beta_t$ 是写入学习率。两种局部目标为
+
+$$
+\mathcal L_{\mathrm{Hebbian}}(S)=-\langle S^\top k_t,v_t\rangle,
+\qquad
+\mathcal L_{\mathrm{Delta}}(S)=\frac12\|S^\top k_t-v_t\|_2^2.
+$$
+
+前者的梯度更新只累加写入，后者写入预测残差。衰减 gate 可对应状态收缩或 weight decay，但通道级 gate、先衰减再纠错等顺序仍需按具体递推定义。
 
 ### 1.4 全谱系对照（Kimi Linear Table 7）
 
-每一行都是「一个目标函数 + 一步梯度下降」：
+下表按回归与状态收缩比较机制。LA、GLA、DeltaNet 等可直接写成显式梯度步；Longhorn 使用隐式更新，非对称读写 key 的变体则不能都等同于同一个欧氏回归目标。
 
-| 方法 | 目标 $L$ | 更新 $S_t = S_{t-1} - \nabla_{S_{t-1}} L$ |
+| 方法 | 局部学习解释 | 状态更新 |
 |---|---|---|
 | LA | $-\langle S^{\top} k_t,\ v_t \rangle$ | $S_t = S_{t-1} + k_t v_t^{\top}$ |
 | RetNet | $-\beta_t \langle \cdot \rangle + \tfrac{1}{2}\, \|\sqrt{1-\alpha}\, S\|_F^2$ | $S_t = \alpha S_{t-1} + \beta_t k_t v_t^{\top}$ |
 | Mamba-2 | $-\beta_t \langle \cdot \rangle + \tfrac{1}{2}\, \|\sqrt{1-\alpha_t}\, S\|_F^2$ | $S_t = \alpha_t S_{t-1} + \beta_t k_t v_t^{\top}$ |
 | GLA | $-\langle \cdot \rangle + \tfrac{1}{2}\, \|\sqrt{\mathrm{Diag}(1-\alpha_t)}\, S\|_F^2$ | $S_t = \mathrm{Diag}(\alpha_t)\, S_{t-1} + k_t v_t^{\top}$ |
 | HGRN2 | $-\langle S^{\top} (1-\alpha_t),\ v_t \rangle + \tfrac{1}{2}\, \|\cdot\|_F^2$ | $S_t = \mathrm{Diag}(\alpha_t)\, S_{t-1} + (1-\alpha_t)\, v_t^{\top}$ |
-| Longhorn | $\tfrac{1}{2}\, \|S^{\top} k_t - v_t\|^2_{\mathrm{Diag}(\beta_t)}$（**隐式**，闭式最优） | $S_t = (I - \tfrac{\beta_t}{1 + \beta_t k_t^{\top} k_t}\, k_t k_t^{\top})\, S_{t-1} + \beta_t k_t v_t^{\top}$ |
-| Comba | $\tfrac{\beta_t}{2}\, \|S^{\top} k_t - v_t\|^2 + \tfrac{1}{2}\, \|\sqrt{1-\alpha_t}\, S\|_F^2$ | $S_t = (\alpha_t - \beta_t k_t \hat{k}_t^{\top})\, S_{t-1} + \beta_t k_t v_t^{\top}$ |
-| RWKV-7 | $\tfrac{1}{2}\, \|S^{\top} \tilde{k}_t - v_t\|^2 + \tfrac{1}{2}\, \|\sqrt{\mathrm{Diag}(1-\alpha_t)}\, S\|_F^2$ | $S_t = (\mathrm{Diag}(\alpha_t) - (b_t \odot \hat{k}_t)\, \hat{k}_t^{\top})\, S_{t-1} + k_t v_t^{\top}$ |
+| Longhorn | 标量学习率下的隐式回归步；见下式 | $S_t=(I-\eta_tk_tk_t^\top)S_{t-1}+\eta_tk_tv_t^\top$，$\eta_t=\beta_t/(1+\beta_t\|k_t\|^2)$ |
+| Comba | 使用不同的读取与移除 key；需按模型的广义更新解释 | $S_t=(\alpha_t I-\beta_t k_t\hat k_t^\top)S_{t-1}+\beta_tk_tv_t^\top$ |
+| RWKV-7 | 非对称 rank-one 状态更新，见 §4 的 DPLR 形式 | $S_t=(\mathrm{Diag}(\alpha_t)-a_tb_t^\top)S_{t-1}+k_tv_t^\top$；$a_t,b_t$ 按模型参数化定义 |
 | **GDN** | $\tfrac{\beta_t}{2}\, \|\tilde{S}_{t-1}^{\top} k_t - v_t\|^2$ | $S_t = (I - \beta_t k_t k_t^{\top})\, \alpha_t S_{t-1} + \beta_t k_t v_t^{\top}$ |
 | **KDA** | $\tfrac{\beta_t}{2}\, \|\tilde{S}_{t-1}^{\top} k_t - v_t\|^2$ | $S_t = (I - \beta_t k_t k_t^{\top})\, \mathrm{Diag}(\alpha_t)\, S_{t-1} + \beta_t k_t v_t^{\top}$ |
 
 （GDN/KDA 的 $\tilde{S}_{t-1}$ 指「已被衰减过的状态」，即先衰减、后在其上做 SGD。）
 
-> **Longhorn 与 DeltaNet 的理论差别值得一提**（GDN 脚注）：Longhorn 用隐式在线学习求同一目标的闭式全局最优更新；DeltaNet 用一步显式梯度下降。所以 Longhorn 的 $(I - \beta/(1 + \beta k^{\top} k)\, k k^{\top})$ 里那个分母就是闭式解带来的。
+Longhorn 的区别可以用标量 $\beta_t>0$ 的隐式回归步说明：
+
+$$
+S_t=\arg\min_S\left\{\frac12\|S-S_{t-1}\|_F^2
++\frac{\beta_t}{2}\|S^\top k_t-v_t\|_2^2\right\}.
+$$
+
+解一阶最优条件后，擦除与写入都使用 $\eta_t=\beta_t/(1+\beta_t\|k_t\|^2)$；不能只在擦除项加分母而仍以原 $\beta_t$ 写入。逐 value-channel 学习率时，应逐列使用对应系数。
 
 ## 2. WY 表示与 UT transform：delta rule 的并行化
 
 递归里出现的不再是标量或向量的缩放，而是 Householder 矩阵的连乘积——这是 delta 家族比衰减家族难做的全部原因。
 
-chunk 内展开（GDN 论文 Eq. 3，$r$ 是块内位置）：
+固定一个 chunk，省略 chunk 下标。采用 $S\in\mathbb R^{d_k\times d_v}$，令 $A_i=I-\beta_i k_i k_i^\top$，则
 
 $$
-\begin{aligned}
-S_{[t]}^{r} &= S_{[t]} \cdot P_{[t]}^{r} + H_{[t]}^{r}\\
-P_{[t]}^{r} &= \prod_{i=1}^{r} ( I - \beta^{i} k^{i} (k^{i})^{\top} ) &&\in \mathbb{R}^{d_k \times d_k}\\
-H_{[t]}^{r} &= \sum_{i=1}^{r} ( \beta^{i} v^{i} (k^{i})^{\top} \cdot \prod_{j=i+1}^{r} ( I - \beta^{j} k^{j} (k^{j})^{\top} ) )
-\end{aligned}
+S_r=P_rS_0+H_r,\qquad
+P_r=A_r\cdots A_1,\qquad
+H_r=\sum_{i=1}^{r}(A_r\cdots A_{i+1})\beta_i k_iv_i^\top.
 $$
 
-朴素计算需要为每一步物化一个 $d_k \times d_k$ 矩阵，即 $O(d^2)$ 内存乘以 $N$ 步，I/O 上不可接受。
+空乘积为单位矩阵；越晚的 transition 乘在越左侧。原论文使用相反的状态转置布局，不能把其右乘公式直接接到本章的左乘递推上。若显式保存每个位置的完整 $P_r$，就需要 $O(Nd_k^2)$ 个元素。
 
 ### 2.1 WY 表示
 
-Bischof & Van Loan 1985（*The WY Representation for Products of Householder Matrices*）给出的方法，可以把 $r$ 个 rank-1 更新压缩成两个向量序列：
+WY 表示把一串 rank-one transition 写成向量序列的组合。与上述列向量约定一致的形式为
 
 $$
 \begin{aligned}
-P_{[t]}^{r} &= I - \sum_{i \le r} w^{i} (k^{i})^{\top}, \qquad w^{r} = \beta^{r}\, ( k^{r} - \sum_{i<r} w^{i}\, (k^{i\top} k^{r}) )\\
-H_{[t]}^{r} &= \sum_{i \le r} u^{i} (k^{i})^{\top}, \qquad u^{r} = \beta^{r}\, ( v^{r} - \sum_{i<r} u^{i}\, (k^{i\top} k^{r}) )
+P_r&=I-\sum_{i\le r}k_iw_i^\top,
+&w_r&=\beta_r\left(k_r-\sum_{i<r}w_i(k_i^\top k_r)\right),\\
+H_r&=\sum_{i\le r}k_iu_i^\top,
+&u_r&=\beta_r\left(v_r-\sum_{i<r}u_i(k_i^\top k_r)\right).
 \end{aligned}
 $$
 
-**内存从 $O(d^2)$ 降到 $O(d)$**，只需存两个向量序列 $w, u$。矩阵形式：$P = I - W^{\top} K$，$H = U^{\top} K$。
+把 K/W/U 的 token 向量按行堆叠，则 chunk 末有 $P=I-K^\top W$、$H=K^\top U$。保存 W/U 只需 $O(C(d_k+d_v))$ 个元素，而非每个 token 一份完整 transition。
 
-$u_t$ 被称为 "pseudo value"（伪值）——它就是 $\beta_t\, (v_t - v_t^{\mathrm{old}})$，即写入的残差。
+$u_r$ 是从零初态出发时的写入残差；真实初态不为零时，还要扣除它引入的预测。最终 pseudo value 是 $\widetilde V=U-WS_0$，这正是后续 chunkwise 算法和 KCP 段摘要共用的结构。
 
 ### 2.2 UT transform
 
@@ -128,7 +134,7 @@ $$
 
 （$\mathrm{strictLower}(\cdot) = \mathrm{tril}(\cdot, -1)$。）
 
-下三角矩阵求逆用前向代入（forward substitution）逐行迭代，复杂度 $O(C^3)$，但 $C = 64$ 时完全放得进 SRAM。`fla` 里这是 [[fla:fla/ops/utils/solve_tril.py#L355|solve_tril]]，实现是「16×16 块内前向代入 + 分块 Schur 精确归并」，细节见 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md) §4。
+下三角矩阵求逆用前向代入（forward substitution）逐行迭代，复杂度 $O(C^3)$，但 $C = 64$ 时完全放得进 SRAM。`fla` 里这是 [[fla:fla/ops/utils/solve_tril.py#L361|solve_tril]]，实现是「16×16 块内前向代入 + 分块 Schur 精确归并」，细节见 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md) §4。
 
 ### 2.3 最终的 chunkwise 算法
 
@@ -262,12 +268,12 @@ $$
 \tilde{U} = [ I + \mathrm{strictLower}( \mathrm{diag}(\beta)\, (\Gamma \odot K K^{\top}) ) ]^{-1}\, \mathrm{diag}(\beta)\, V
 $$
 
-最终：
+记 $T_g=[I+\mathrm{strictLower}(\mathrm{diag}(\beta)(\Gamma\odot KK^\top))]^{-1}\mathrm{diag}(\beta)$，还需 $\overleftarrow W=T_g(\gamma\odot K)$，其中 $\gamma$ 按 token 行广播。最终：
 
 $$
 \begin{aligned}
-S_{[t+1]} &= \overrightarrow{S}_{[t]} + ( \tilde{U}_{[t]} - \overleftarrow{W}_{[t]}\, S_{[t]} )^{\top}\, \overrightarrow{K}_{[t]}\\
-O_{[t]} &= \overleftarrow{Q}_{[t]}\, S_{[t]} + ( Q_{[t]} K_{[t]}^{\top} \odot M )\, ( \tilde{U}_{[t]} - \overleftarrow{W}_{[t]}\, S_{[t]} )
+S_{[t+1]} &= \overrightarrow{S}_{[t]} + \overrightarrow{K}_{[t]}^{\top}\,( \tilde{U}_{[t]} - \overleftarrow{W}_{[t]}\, S_{[t]} )\\
+O_{[t]} &= \overleftarrow{Q}_{[t]}\, S_{[t]} + ( Q_{[t]} K_{[t]}^{\top} \odot \Gamma \odot M )\, ( \tilde{U}_{[t]} - \overleftarrow{W}_{[t]}\, S_{[t]} )
 \end{aligned}
 $$
 
@@ -407,7 +413,7 @@ def dplr(q, w_log, a, b, kk, vv, scale):
 | DeltaNet | $1$ | $-\beta k$ | $k$ | $\beta k v^{\top}$ | `1.1e-15` |
 | Gated DeltaNet | $\alpha_t \cdot 1$ | $-\beta k$ | $\alpha_t \odot k$ | $\beta k v^{\top}$ | `4.0e-16` |
 | **KDA** | $\alpha_t$（向量） | $-\beta k$ | $\alpha_t \odot k$ | $\beta k v^{\top}$ | `5.2e-16` |
-| RWKV-7 | $w_t$（向量） | $-\hat{\kappa}$ | $a_{\mathrm{icl}} \odot \hat{\kappa}$ | $\tilde{k} v^{\top}$ | （无独立参考） |
+| RWKV-7 | 非对称 rank-one 状态更新，见 §4 的 DPLR 形式 | $S_t=(\mathrm{Diag}(\alpha_t)-a_tb_t^\top)S_{t-1}+k_tv_t^\top$；$a_t,b_t$ 按模型参数化定义 |
 
 $b = \alpha_t \odot k$ 那一列是关键：因为 $(I - \beta k k^{\top})\, \mathrm{Diag}(\alpha)\, S = (\mathrm{Diag}(\alpha) - \beta k\, (\alpha \odot k)^{\top})\, S$，把 $\mathrm{Diag}(\alpha)$ 提到左边就等价于把它折进 $b$。这正是 §3 那句「顺序变得关键」的代数含义。
 
@@ -433,7 +439,7 @@ report("KDA",      dplr(q, g,                   -bv*k, k*g.exp(),    bv*k, v, sc
 | DeltaNet | $I$ | $\beta_t k_t$ | $k_t$ | 无门控 + delta |
 | Gated DeltaNet | $\alpha_t I$ | $\alpha_t \beta_t k_t$ | $k_t$ | 标量 + delta |
 | **RWKV-7** | $\mathrm{Diag}(w_t)$ | $\hat{\kappa}_t$ | $a_t \odot \hat{\kappa}_t$ | 通道级 + 通道级 ICLR + **独立移除键** |
-| Comba | $\alpha_t I$ | $\beta_t k_t$ | $\hat{k}_t$ | 标量 + delta（闭环控制） |
+| Comba | 使用不同的读取与移除 key；需按模型的广义更新解释 | $S_t=(\alpha_t I-\beta_t k_t\hat k_t^\top)S_{t-1}+\beta_tk_tv_t^\top$ |
 | **KDA** | $\mathrm{Diag}(\alpha_t)$ | $\beta_t k_t$ | $k_t \odot \alpha_t$ | **通道级 + delta，且 $a, b$ 都绑定到 $k$** |
 | 通用 DPLR | $D$ | $a_t$（自由） | $b_t$（自由） | 最强但最慢 |
 

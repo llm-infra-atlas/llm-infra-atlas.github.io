@@ -70,12 +70,18 @@ def retnet_parallel(q, k, v, gamma, scale):
 
 ### Multi-Scale Retention（MSR，Eq. 8）
 
-```
-γ = 1 − 2^{−5−arange(0,h)} ∈ ℝ^h                       ← 多尺度调度
-head_i = Retention(X, γ_i)
-Y = GroupNorm_h( Concat(head_1, …, head_h) )            ← 逐头归一化，必需
-MSR(X) = ( swish(X W_G) ⊙ Y ) W_O                       ← output gate 的祖先
-```
+给 $h$ 个 head 设置不同的衰减尺度，令 $i=0,\ldots,h-1$：
+
+$$
+\begin{aligned}
+\gamma_i&=1-2^{-(5+i)},\\
+H_i&=\operatorname{Retention}(X,\gamma_i),\\
+Y&=\operatorname{GroupNorm}_h(\operatorname{Concat}(H_0,\ldots,H_{h-1})),\\
+\operatorname{MSR}(X)&=\left(\operatorname{swish}(XW_G)\odot Y\right)W_O.
+\end{aligned}
+$$
+
+逐头 normalization 配合多尺度 retention；末式是 output gate。
 
 $\gamma_i = 1 - 2^{-5-i}$：head 0 衰减最快（$\gamma \approx 0.969$），head $h-1$ 最慢。每层共享同一组 $\gamma$，且固定不学习。大模型实验中改用 $\gamma = 1 - \exp(\mathrm{linspace}(\log 1/32, \log 1/512, h))$。
 
@@ -102,17 +108,27 @@ Lightning Attention-2 的答案是：intra-block 用 left product（块小，二
 
 Algorithm 1（衰减率 $\lambda$、块大小 $B$）：
 
-```
-M_ij = λ^{i−j} if i≥j else 0,   Λ = diag{λ⁰, λ¹, …, λ^{B−1}},   KV = 0
+设块内位置为 $r,s=1,\ldots,B$，块进入时的状态为 $S_{i-1}$。定义
 
-for i in 1..T/B:
-    O_intra = [ (Q_i K_iᵀ) ⊙ M ] V_i                 # left product
-    O_inter = Λ Q_i (KV)                              # right product
-    KV     ← λ^B KV + (λ^B Λ⁻¹ K_i)ᵀ V_i
-    O_i    = O_intra + O_inter
-```
+$$
+M_{rs}=\mathbf1_{\{s\le r\}}\lambda^{r-s},\qquad
+\Lambda=\operatorname{diag}(\lambda,\lambda^2,\ldots,\lambda^B).
+$$
 
-⚠️ 原文 Algorithm 1 写 $\Lambda = \mathrm{diag}\{\lambda, \lambda^2, \dots, \lambda^B\}$，而推导部分写 $\Lambda = \mathrm{diag}\{1, \lambda, \dots, \lambda^{B-1}\}$，两者差一个全局 $\lambda$ 因子，取决于块内位置是 0- 还是 1-indexed。**实现时用 $\Lambda_{rr} = \lambda^r$（$r = 0, \dots, B-1$）与 $M_{ij} = \lambda^{i-j}$ 配套即可自洽。**
+则块内输出、历史贡献与状态更新为
+
+$$
+\begin{aligned}
+O_i^{\mathrm{intra}}&=\left[(Q_iK_i^\top)\odot M\right]V_i,\\
+O_i^{\mathrm{inter}}&=\Lambda Q_iS_{i-1},\\
+S_i&=\lambda^BS_{i-1}+\left(\lambda^B\Lambda^{-1}K_i\right)^\top V_i,\\
+O_i&=O_i^{\mathrm{intra}}+O_i^{\mathrm{inter}},\qquad S_0=0.
+\end{aligned}
+$$
+
+这里按 token 更新前先衰减的约定定义状态，所以首行历史贡献乘 $\lambda$，最后一行的新写入不再额外衰减；这避免 0-based/1-based 混用导致 off-by-one。
+
+若改成 0-based 的块内位置 $r=0,\ldots,B-1$，历史贡献应乘 $\lambda^{r+1}$，新写入到块末的衰减应为 $\lambda^{B-1-r}$。索引起点、输入状态所在时刻与衰减位置必须一起改变，不能只把 $\Lambda$ 的第一项改成 1。
 
 ### MiniMax-01 的配置
 
@@ -357,7 +373,7 @@ sub-chunk 内部（对角块）仍用 Eq. 4 逐位置对全精度计算。
 | 2（sub-chunk 间，橙色块） | 半精度 matmul | ✓ |
 | 2（sub-chunk 内，粉色块） | **全精度 log 空间，逐位置对** | ✗ |
 
-`fla` 里这三块对应三个 kernel：[[fla:fla/ops/gla/chunk.py#L53|chunk_gla_fwd_A_kernel_intra_sub_inter]]（sub-chunk 对 $i > j$）、[[fla:fla/ops/gla/chunk.py#L134|..._intra_sub_intra]]（对角）、[[fla:fla/ops/gla/chunk.py#L209]]（大 $K$ 时的切分）。
+`fla` 里这三块对应三个 kernel：[[fla:fla/ops/gla/chunk.py#L70|chunk_gla_fwd_A_kernel_intra_sub_inter]]（sub-chunk 对 $i > j$）、[[fla:fla/ops/gla/chunk.py#L151|..._intra_sub_intra]]（对角）、[[fla:fla/ops/gla/chunk.py#L226]]（大 $K$ 时的切分）。
 
 代价有实测数据：`fla` 的 GB200 benchmark 里 `chunk_gla` 一贯比 `chunk_retention` / `chunk_simple_gla` 慢 1.4–2.3 倍——这正是通道级门控带来的开销（[06 · Flash Linear Attention](../fa/06_flash_linear_attention.md) §9）。
 
@@ -376,13 +392,22 @@ $$
 
 ### 4.6 GLA Transformer 的完整层
 
-```
-S^h_t = ((α^h_t)ᵀ 1) ⊙ S^h_{t-1} + k^h_t (v^h_t)ᵀ            S^h ∈ ℝ^{d'_k × d'_v}
-o^h_t = (S^h_t)ᵀ q^h_t
-o'_t  = concat( LN(o^1_t), …, LN(o^H_t) )                     ← 逐头 LayerNorm
-r_t   = Swish(x_t W_r + b_r)                                   ← output gate
-y_t   = (r_t ⊙ o'_t) W_O
-```
+按本文列向量约定，每头状态与输出为
+
+$$
+S_t^h=\operatorname{Diag}(\alpha_t^h)S_{t-1}^h+k_t^h(v_t^h)^\top,
+\qquad o_t^h=(S_t^h)^\top q_t^h.
+$$
+
+拼接逐头归一化结果，再施加 output gate：
+
+$$
+\begin{aligned}
+o'_t&=\operatorname{Concat}(\operatorname{LN}(o_t^1),\ldots,\operatorname{LN}(o_t^H)),\\
+r_t&=\operatorname{swish}(W_rx_t+b_r),\\
+y_t&=W_O(r_t\odot o'_t).
+\end{aligned}
+$$
 
 Block 结构为 $\mathrm{GLA}(\mathrm{LN}(X)) + X$，然后接 $\mathrm{SwiGLU}(\mathrm{LN}(Y)) + X$。这个「逐头 norm + output gate」的结构从 RetNet 传下来，一直传到 KDA（[`10`](./10_gating.md)）。
 

@@ -1,0 +1,226 @@
+[
+  {
+    "file": "arxiv/2309.14509_ulysses.png",
+    "title": "DeepSpeed-Ulysses: all-to-all switches between sequence- and head-partitioned layouts",
+    "source": "https://arxiv.org/abs/2309.14509",
+    "image_url": "https://arxiv.org/html/2309.14509v2/figs/image3.png",
+    "retrieved": null,
+    "sha256": "0c41d8e6105bfda47d57280eb992d450a5ed9dcbdcd820d3a9663b8f9346903d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2309.14509",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/02_ulysses_a2a.md",
+      "docs/parallel/04_cp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2310.01889_ring_attention.png",
+    "title": "Ring Attention: KV blocks rotate around a ring while each host keeps its query block",
+    "source": "https://arxiv.org/abs/2310.01889",
+    "image_url": "https://arxiv.org/html/2310.01889v4/figures/merged.png",
+    "retrieved": null,
+    "sha256": "290af3959ae302061f7b50ae605cf19f430e874a00b8bdfd90ac153a749c127a",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.01889",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/01_ring_attention.md",
+      "docs/parallel/04_cp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2412.01523_flexsp_motivation.png",
+    "title": "FlexSP 的动机：同质 vs 异构 SP group",
+    "source": "https://arxiv.org/abs/2412.01523",
+    "image_url": "https://arxiv.org/html/2412.01523v3/HASP_Observation.png",
+    "retrieved": null,
+    "sha256": "a476f56673f08fc708a4f23f3a3f0e71383379d1719826d8739755aea3a7931d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.01523",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2503.02356_chunk_construction.png",
+    "title": "ChunkFlow 的 chunk 构造",
+    "source": "https://arxiv.org/abs/2503.02356",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "cfbac756b4c8bb0245e7fe2bcfe76144124a73ee607a6ba7275a69a922f8751a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.02356",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.02356_state_aware_1f1b.png",
+    "title": "2503.02356_state_aware_1f1b",
+    "source": "https://arxiv.org/abs/2503.02356",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "4f87387f857c7b8847a97f6be15d12baa7f315bece82aca848a83c7a142805c3",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "filename_paper_id",
+    "arxiv_id": "2503.02356",
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.17924_packing_sharding.png",
+    "title": "2503.17924_packing_sharding",
+    "source": "https://arxiv.org/abs/2503.17924",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "afad858f2e975d7b4a1ad7eea26fecf0cb45d0550231c5ae464aa2a4dc1d6f23",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "filename_paper_id",
+    "arxiv_id": "2503.17924",
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.17924_per_doc.png",
+    "title": "WLB-LLM 的 per-document sharding",
+    "source": "https://arxiv.org/abs/2503.17924",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9528ee8e0aa76bce55aafa032a7a0ecd1b35da28f6a6cfb937a71f51b2f0a78e",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.17924",
+    "figure_from_caption": "9",
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2505.13211_magiattn_load_balance.png",
+    "title": "Ring Attention 的几种定制切分策略",
+    "source": "https://arxiv.org/abs/2505.13211",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9e9b1b60d36ca685b1814f5cd7232ec84412960b9b6b55f4a325e1906949e350",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2505.13211",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2505.19609_skrull_workflow.png",
+    "title": "Skrull 的整体工作流",
+    "source": "https://arxiv.org/abs/2505.19609",
+    "image_url": "https://arxiv.org/html/2505.19609v2/method_2.png",
+    "retrieved": null,
+    "sha256": "505f01c080ee260108190f18a15ffeb70c7eb0ebf30dbf98595b9d56713f8a4e",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2505.19609",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2510.10620_dcp_overview.png",
+    "title": "DCP 的系统总览",
+    "source": "https://arxiv.org/abs/2510.10620",
+    "image_url": "https://arxiv.org/html/2510.10620v1/overview.png",
+    "retrieved": null,
+    "sha256": "7d63ebd7aa887e87f22663cf78206395fd703ca9b7dbb4ff1b314acbcf04c5fd",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2510.10620",
+    "figure_from_caption": "8",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2510.10620_dcp_redundant_comm.png",
+    "title": "Ring attention 在 shared question mask 下的冗余 KV 传输",
+    "source": "https://arxiv.org/abs/2510.10620",
+    "image_url": "https://arxiv.org/html/2510.10620v1/shared_question_mask_comm.png",
+    "retrieved": null,
+    "sha256": "3fcd73f39440810d1b9ed6167a6de344e46dad9c960def65254a0542c9443067",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2510.10620",
+    "figure_from_caption": "7b",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2607.23250_libra_overview.png",
+    "title": "Libra 的设计总览",
+    "source": "https://arxiv.org/abs/2607.23250",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "4e23a650d2f8be8b5a8a151a58907e21346ff79bd9779be16819c4352e5d15f9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.23250",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/parallel/04_cp/03_long_ctx_load_balance.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

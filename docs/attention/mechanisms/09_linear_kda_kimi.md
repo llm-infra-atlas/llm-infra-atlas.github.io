@@ -45,51 +45,63 @@ def kda_recurrent(q, k, v, g, beta, scale):
 
 ## 2. Chunkwise 算法
 
-对应原文 §3.1，共五步。记号：$\gamma^{i \to j} := \prod_{k=i}^{j} \alpha^k$，简写 $\gamma^r := \gamma^{1 \to r}$；$\mathcal{A}_{ij} = \gamma^i / \gamma^j \in \mathbb{R}^{C \times C}$；$\Gamma^{i \to j} \in \mathbb{R}^{C \times d_k}$ 是把 $\gamma^i \dots \gamma^j$ 按行堆叠。
-
-**Step 1 — 部分展开（Eq. 2）**：
+下面统一采用列向量状态，并明确累计衰减的索引。固定一个长度为 $C$ 的 chunk，令
 
 $$
-\begin{aligned}
-S_{[t]}^r &= P_{[t]}^r\, S_{[t]}^0 + H_{[t]}^r \\
-P_{[t]}^r &= \prod_{i \le r} (I - \beta^i k^i (k^i)^{\top})\, \mathrm{Diag}(\alpha^i) \\
-H_{[t]}^r &= \sum_{i \le r} \Big( \prod_{j=i+1}^{r} (I - \beta^j k^j (k^j)^{\top})\, \mathrm{Diag}(\alpha^j) \Big)\, \beta^i k^i (v^i)^{\top}
-\end{aligned}
+\gamma_r=\prod_{j=1}^{r}\alpha_j,\qquad\gamma_0=\mathbf1,
+\qquad \Gamma=\begin{bmatrix}\gamma_1^\top\\\vdots\\\gamma_C^\top\end{bmatrix}.
 $$
 
-**Step 2 — WY 表示（Eq. 3）**，遵循 Comba 的 `P` 形式，以省掉一次额外矩阵求逆：
+乘除均逐通道进行。位置 $i$ 写入的内容在位置 $r$ 的衰减为 $\gamma_r/\gamma_i$，仅包含 $i+1$ 到 $r$ 的 gate；当前 token 写入之后不能再额外乘一次 $\alpha_i$。
+
+### 2.1 有序 transition
+
+定义 $A_i=(I-\beta_i k_i k_i^\top)\mathrm{Diag}(\alpha_i)$，则
 
 $$
-\begin{aligned}
-P_{[t]}^r &= \mathrm{Diag}(\gamma^r) - \sum_{i \le r} \mathrm{Diag}(\gamma^{i \to r})\, k^i (w^i)^{\top} \\
-H_{[t]}^r &= \sum_{i \le r} \mathrm{Diag}(\gamma^{i \to r})\, k^i (u^i)^{\top}
-\end{aligned}
+S_r=P_rS_0+H_r,\qquad
+P_r=A_r\cdots A_1,\qquad
+H_r=\sum_{i=1}^{r}(A_r\cdots A_{i+1})\beta_i k_iv_i^\top.
 $$
 
-**Step 3 — UT transform（Eq. 6–7）**：
+$P_r$ 与 $H_r$ 正是 [KCP](../../parallel/04_cp/06_linear_attention_kcp.md) 需要的 transition 和零状态写入。直接连乘稠密矩阵很昂贵，因此继续转换为 WY/UT 形式。
+
+### 2.2 WY 与 UT 表示
+
+将 $K,V$ 的 token 向量按行堆叠，定义
 
 $$
-\begin{aligned}
-M_{[t]} &= [ I + \mathrm{StrictTril}( \mathrm{Diag}(\beta) \cdot (\Gamma^{1 \to C} \odot K) \cdot (K / \Gamma^{1 \to C})^{\top} ) ]^{-1} \mathrm{Diag}(\beta) \\
-W_{[t]} &= M_{[t]}\, (\Gamma^{1 \to C} \odot K_{[t]}), \qquad U_{[t]} = M_{[t]}\, V_{[t]}
-\end{aligned}
+T=\left[I+\mathrm{StrictTril}\left(
+\mathrm{Diag}(\beta)(\Gamma\odot K)(K/\Gamma)^\top
+\right)\right]^{-1}\mathrm{Diag}(\beta),
+\qquad W=T(\Gamma\odot K),\qquad U=TV.
 $$
 
-注意其中的 $K / \Gamma^{1 \to C}$，即除以累积衰减。这就是 [`07`](./07_linear_decay_gating.md) §4.2 里 GLA 的同一个数值问题，KDA 继承了它。§7 会讲 Kimi K3 如何彻底解决。
-
-**Step 4 — 状态更新（Eq. 8）**：
+其中 $T$ 为 $C\times C$ 的下三角变换，$W$ 为 $C\times d_k$，$U$ 为 $C\times d_v$。对 prefix $r$，其 WY 表示为
 
 $$
-S_{[t+1]} = \mathrm{Diag}(\gamma^C)\, S_{[t]} + (\Gamma^{i \to C} \odot K_{[t]})^{\top}\, (U_{[t]} - W_{[t]} S_{[t]})
+P_r=\mathrm{Diag}(\gamma_r)
+-\sum_{i\le r}\mathrm{Diag}(\gamma_r/\gamma_i)k_iw_i^\top,
+\qquad
+H_r=\sum_{i\le r}\mathrm{Diag}(\gamma_r/\gamma_i)k_iu_i^\top.
 $$
 
-**Step 5 — 输出（Eq. 9）**：
+这里的除以累计衰减正是潜在的数值难点。实际算子需要 log-domain 处理、二级分块或有界 gate，不能直接把长 chunk 的极小乘积求倒数。
+
+### 2.3 状态与输出
+
+令 $\widetilde V=U-WS_0$，把 chunk 末衰减后的 key 记为 $K_{\mathrm{end}}$，其第 $i$ 行为 $((\gamma_C/\gamma_i)\odot k_i)^\top$。则
 
 $$
-O_{[t]} = \underbrace{(\Gamma^{1 \to C} \odot Q_{[t]})\, S_{[t]}}_{\text{inter-chunk}} \;+\; \underbrace{\mathrm{Tril}\big( (\Gamma^{1 \to C} \odot Q_{[t]})\, (K_{[t]} / \Gamma^{1 \to C})^{\top} \big)}_{\text{intra-chunk}}\; \underbrace{(U_{[t]} - W_{[t]} S_{[t]})}_{\text{pseudo value}}
+S_{\mathrm{next}}=\mathrm{Diag}(\gamma_C)S_0+K_{\mathrm{end}}^\top\widetilde V,
 $$
 
-> **$\mathrm{Tril}$ 含对角线**，这一点 K3 论文明确解释了原因："the diagonal is retained because **each output reads the state after the current-token update**." —— 因为 $o_t = S_t^{\top} q_t$ 用的是更新后的 $S_t$，所以 query $t$ 要能看到 key $t$ 自己。
+$$
+O=(\Gamma\odot Q)S_0
++\mathrm{Tril}\left((\Gamma\odot Q)(K/\Gamma)^\top\right)\widetilde V.
+$$
+
+第一项是输入状态对本段的贡献，第二项是块内写入的贡献。$\mathrm{Tril}$ 包含对角线，因为当前 query 读取的是当前 token 更新之后的状态。上述公式省略 Q 的固定 scale，代码中通过 `scale` 统一施加。
 
 ### 完整实现
 
@@ -180,34 +192,44 @@ $$
 
 ### 3.3 与 RWKV-7 的对比
 
-Kimi Linear Table 6 的两行（并行形式，省略归一化项与 $\beta_t$）只差一列：
+先把两种递推写到同一个 DPLR 形式：
 
-```
-RWKV-7:  ( (Q⊙Γ)(K/Γ)ᵀ ⊙ M ) · ( I + (K̂⊙Γ^{0→t−1})( (K̃⊙B)/Γ )ᵀ ⊙ M⁻ )^{-1} V
-                                        └─ K̂ 与 K̃⊙B 是【两个不同的张量】─┘
-KDA:     ( (Q⊙Γ)(K/Γ)ᵀ ⊙ M ) · ( I + (K⊙Γ)(K/Γ)ᵀ ⊙ M⁻ )^{-1} V
-                                        └─ K 出现【两次】，同一个张量 ─┘
-```
+$$
+S_t=(D_t-a_tb_t^\top)S_{t-1}+k_tv_t^\top.
+$$
 
-这就是「绑定 $a = b = k$」在并行形式上的直观体现，也是省掉两次二级分块的根源。RWKV-7 换来的是「移除键与写入键可以不同」的表达力（[`08`](./08_linear_delta_rule.md) §4），KDA 换来的是 2 倍的算子速度。这是一个明确的取舍点。
+一般 DPLR 的 $a_t,b_t$ 可分别参数化。KDA 的 transition 则满足
+
+$$
+D_t=\mathrm{Diag}(\alpha_t),\qquad
+(I-\beta_t k_tk_t^\top)D_t
+=D_t-\beta_tk_t(D_tk_t)^\top.
+$$
+
+所以移除方向受到同一个 key 的约束，$\beta_t$ 与 gate 只是对应缩放；写入项还需带 $\beta_t$。相比把两套 key 自由参数化，这种结构能复用更多 pairwise 矩阵计算。
+
+这就是共享同一底层 key 的结构约束；严格的 DPLR 因子还包含 gate 与 beta 缩放，也是省掉两次二级分块的根源。RWKV-7 换来的是「移除键与写入键可以不同」的表达力（[`08`](./08_linear_delta_rule.md) §4），KDA 在论文给定配置中获得了接近 2 倍的算子速度。这是一个明确的取舍点。
 
 ## 4. KDA 作为可学习的位置编码
 
 这是 Kimi Linear 中最有洞察力的一节（§6.1），也是「为什么 MLA 层可以用 NoPE」的全部理由。
 
-RoPE 的广义形式：
+对标准 RoPE，令绝对位置旋转为 $R_t$，旋转后的 dot product 为
 
 $$
-s_{t,i} = q_t^{\top} \Big( \prod_{j=i+1}^{t} R_j \Big)\, k_i
+s_{t,i}=(R_tq_t)^\top(R_ik_i)=q_t^\top R_t^\top R_i k_i
+=q_t^\top R_{i-t}k_i.
 $$
 
-$R_j$ 是块对角旋转矩阵。由正交性 $R_{t-i} = R_t^{\top} R_i$，绝对位置可分别施加于 $q, k$ 并自动转成相对位置（[`02`](./02_position_and_stability.md) §2）。
+最后一步还使用了 RoPE 旋转族的群结构，仅有正交性本身不保证相对位置关系。具体推导见 [位置编码](./02_position_and_stability.md)。
 
-gated delta rule 有完全对应的形式（Eq. 12）：
+对零初态的 KDA，令 $T_j=(I-\beta_jk_jk_j^\top)\mathrm{Diag}(\alpha_j)$，有
 
 $$
-o_t = \sum_{i \le t} \Big( q_t^{\top}\, \underbrace{\Big( \prod_{j=i+1}^{t} A_j\, (I - \beta_j k_j k_j^{\top}) \Big)}_{\text{same structure as RoPE's } \prod R_j}\, k_i \Big)\, v_i
+o_t=\sum_{i\le t}\beta_i\left(q_t^\top T_tT_{t-1}\cdots T_{i+1}k_i\right)v_i.
 $$
+
+后续位置的 transition 决定早期写入怎样到达当前 query。乘积从右向左推进时间，不能交换 gate 与 delta 项；$i=t$ 时乘积为单位矩阵。
 
 因此，**GDN/KDA 是一种「数据相关、可学习的乘性位置编码」**，它放松了 RoPE 的正交性约束，所以 "can be potentially more powerful"。
 
@@ -216,7 +238,7 @@ $$
 ```
 Mamba-2（[07] §3.2）:   "L 是一个 data-dependent positional mask，替换了 heuristic 位置编码"
 RoPE（[02] §2）:        正交旋转 ⇒ 严格相对；自带弱 long-term decay
-KDA（本节）:             Π A_j (I − βkkᵀ) 与 Π R_j 同构，但数据相关、非正交 ⇒ 更强
+KDA（本节）:             有序 transition 与相对位置旋转相对应，但数据相关、非正交
                                     ↓
 Kimi Linear 的决定:     既然 KDA 层已经是「主要的 position-aware 算子」，
                         MLA 层就不需要位置编码 ⇒ NoPE
@@ -276,7 +298,7 @@ $$
 
 （顺序：KDA → 逐头 RMSNorm → ⊙ sigmoid 门 → $W_o$。）
 
-即 `FusedRMSNormGated` 的语义。层的连线在 [[fla:fla/layers/kda.py#L248-L307]] 能逐行对上。
+即 `FusedRMSNormGated` 的语义。层的连线在 [[fla:fla/layers/kda.py#L252-L311]] 能逐行对上。
 
 消融（Table 1）：「sigmoid 而非 swish」是一个实测结论，不是偏好问题。
 
@@ -395,28 +417,31 @@ $$
 
 K3 换掉了从 decay logits $z_t^h$ 到 log-decay $g_t^h$ 的映射：
 
-```
-Kimi Linear（沿用 GDN/Mamba-2）:   g_t^h = −e^{A_h} · Softplus(z_t^h)  ∈ (−∞, 0)^{d_k}
-                                                                        ↑ 无下界
+Kimi Linear 使用无下界的 log-decay；K3 改用有界参数化：
 
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  Kimi K3:   g_t^h = g_min · Sigmoid( e^{A_h} z_t^h )  ∈ (g_min, 0)^{d_k}      │
-│             α_t^h = exp(g_t^h) ∈ ( e^{g_min}, 1 )^{d_k},    g_min = −5 固定    │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+$$
+\begin{aligned}
+g_{t,\mathrm{Linear}}^h&=-e^{A_h}\operatorname{softplus}(z_t^h),\\
+g_{t,\mathrm{K3}}^h&=g_{\min}\operatorname{sigmoid}(e^{A_h}z_t^h),\qquad g_{\min}=-5,\\
+\alpha_t^h&=\exp(g_{t,\mathrm{K3}}^h)\in(e^{g_{\min}},1)^{d_k}.
+\end{aligned}
+$$
+
+所有激活函数逐元素作用；第一行的 log-decay 可趋向负无穷，第二行限制在 $(g_{\min},0)$。
 
 $A_h$ 是可学习的逐头 log-scale（初始化 $A_h = 0$）。
 
 数值分析（原文逐步推导的那条链）：
 
-```
-g_min = −5           ⇒  每个 retention factor α_{t,j}^h > e^{−5} ≈ 6.7e−3
-16-token tile        ⇒  tile 上累积 log-decay ∈ (−80, 0)
-                     ⇒  倒数缩放因子 < e^{80}
-                     ⇒  【落在 BF16 的动态范围内】（BF16 max ≈ 3.4e38 ≈ e^{88.7}）
-                     ⇒  对角 tile 与非对角 tile 都能用 dense Tensor Core matmul
-                     ⇒  彻底消除逐位置对的对角路径
-```
+对 16-token tile 内任意一个通道，累计 log-decay 满足
+
+$$
+-80<\sum_{t=1}^{16}g_{t,j}^h<0,
+\qquad
+\left(\prod_{t=1}^{16}\alpha_{t,j}^h\right)^{-1}<e^{80}.
+$$
+
+$e^{80}$ 小于 BF16 最大有限值（约 $3.4\times10^{38}$）。这个界限制了 tile 内倒数缩放因子的动态范围，为对角 tile 使用 dense matmul 提供条件；它不保证任意输入幅度、后续乘积和长程状态链都不会溢出。
 
 这条因果链是本篇中心论点的最终形态：
 
@@ -498,3 +523,7 @@ Kimi Linear §7.1 对两条路线的对比值得完整引用——它是 [Attent
 ---
 
 下一篇：[10 · 门控](./10_gating.md) —— 「门」在本章出现了太多次：decay gate、write gate $\beta$、output gate、NSA 的分支 gate、Gated MLA。它们是三种不同的东西，值得一次讲清，顺便解释输出门为什么能把 attention sink 从 46.7% 降到 4.8%。
+
+## KDA 的 Context Parallelism
+
+长序列训练不能仅依靠固定 decode state 解决 activation 显存。KCP 将一段 KDA 表示成 affine transition，先并行构造段摘要，再恢复真实初态；backward 对应反向的梯度摘要合并。完整推导、packed sequence 边界、卷积 halo 与 FLA 实现见 [Linear attention CP 与 KCP](../../parallel/04_cp/06_linear_attention_kcp.md)。

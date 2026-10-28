@@ -1,0 +1,40 @@
+[
+  {
+    "file": "flux_dense_layer0.png",
+    "title": "FLUX 的 AG+GEMM：通信 chunk 到达后立即释放依赖它的 GEMM tiles",
+    "source": "https://github.com/bytedance/flux/blob/main/docs/design.md",
+    "image_url": "https://raw.githubusercontent.com/bytedance/flux/main/docs/assets/dense_layer0.png",
+    "retrieved": null,
+    "sha256": "5ba63f53fd86fdbeb9bf74bc91fe152822912d540a40eb440afa13a460f245bb",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/cuda_dsl/01_fused_collective_gemm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "flux_dense_layer1.png",
+    "title": "FLUX 的 GEMM+RS：output tile 完成后在 epilogue 中直接发往目标 rank",
+    "source": "https://github.com/bytedance/flux/blob/main/docs/design.md",
+    "image_url": "https://raw.githubusercontent.com/bytedance/flux/main/docs/assets/dense_layer1.png",
+    "retrieved": null,
+    "sha256": "2bc86ac09804ac1994caaa36ff184ddeea35e1da168cdb23175aa61eac77b1ed",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/cuda_dsl/01_fused_collective_gemm.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

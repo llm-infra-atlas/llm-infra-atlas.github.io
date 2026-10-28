@@ -1,0 +1,737 @@
+[
+  {
+    "file": "arxiv/2211.17192_alpha_tokens.png",
+    "title": "期望产出 token 数随 α、γ 的变化",
+    "source": "https://arxiv.org/abs/2211.17192",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "baf310303057669a9ea928646439ad8fc8ed0349d3ab58c932dcc0ab67016b73",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2211.17192",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/speculative_decoding/01_draft_verify.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2211.17192_fig1_tokens.png",
+    "title": "Leviathan Fig 1：绿=接受的 draft，红=拒绝，蓝=correction；一行 = target 的一次 forward",
+    "source": "https://arxiv.org/abs/2211.17192",
+    "image_url": "https://arxiv.org/html/2211.17192v2/figure1.png",
+    "retrieved": null,
+    "sha256": "b044c5b7fb91a1d12f5869a51f0f0e5614d751acc45adae94125ea1d2e42d7c1",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2211.17192",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000843
+    },
+    "references": [
+      "docs/speculative_decoding/01_draft_verify.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2211.17192_opt_gamma.png",
+    "title": "最优 γ 是 α 与 c 的函数",
+    "source": "https://arxiv.org/abs/2211.17192",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "104115b56ca2edd87d274187983bd0e4506975d2802d1af27f75cf8ef5c08fa9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2211.17192",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/speculative_decoding/01_draft_verify.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2211.17192_trace.png",
+    "title": "Leviathan Fig 5：encoder-decoder 上 γ=7 / γ=3 / 标准 decode 的时间线",
+    "source": "https://arxiv.org/abs/2211.17192",
+    "image_url": "https://arxiv.org/html/2211.17192v2/trace_diagram.png",
+    "retrieved": null,
+    "sha256": "d46e7f34132eb87e37828cff0799938c8b1d59fba78241c0b5c54f80d4de2032",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2211.17192",
+    "figure_from_caption": "5",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.003548
+    },
+    "references": [
+      "docs/speculative_decoding/01_draft_verify.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2305.09781_token_tree.png",
+    "title": "SpecInfer：多条 token sequence 压成一棵共享前缀的 token tree",
+    "source": "https://arxiv.org/abs/2305.09781",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "05c0fa2dea277445ab123d652240a0c107ca6817ff1fde6029514a1181aea96e",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2305.09781",
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2305.09781_tree_decoding.png",
+    "title": "SpecInfer：tree-based parallel decoding 与 KV 布局",
+    "source": "https://arxiv.org/abs/2305.09781",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "71fc6ab8528ae84da324024b70f925718b480014aba573f118865187d560b784",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2305.09781",
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2305.09781_workflow.png",
+    "title": "SpecInfer 系统：draft 引擎出候选，target 作为 token tree verifier",
+    "source": "https://arxiv.org/abs/2305.09781",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "37abcd0c0522a6f2b16a16838ce94d5c5da28807c5895da7d0a21f82876ff3d0",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2305.09781",
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.07851_specdec.png",
+    "title": "自回归 decode vs speculative decoding：左为逐步串行，右为 cheap draft + 并行 verify",
+    "source": "https://arxiv.org/abs/2401.07851",
+    "image_url": "https://arxiv.org/html/2401.07851v3/specdec.png",
+    "retrieved": null,
+    "sha256": "093bfc4805023d6d224ed72fb57af05c196bf5463e831141501ce7571d4de0aa",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.07851",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.007376
+    },
+    "references": [
+      "docs/speculative_decoding/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2401.07851_timeline.png",
+    "title": "Xia et al. 2024：Speculative Decoding 从 2018 Blockwise 到 2024 爆发的时间线",
+    "source": "https://arxiv.org/abs/2401.07851",
+    "image_url": "https://arxiv.org/html/2401.07851v3/timeline.png",
+    "retrieved": null,
+    "sha256": "c4c635e6c4921172df4a2e863cca57981e4089fa97b96b9a5b29b4d46c010dbf",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.07851",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.006357
+    },
+    "references": [
+      "docs/speculative_decoding/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2401.07851_tree.png",
+    "title": "Xia et al. survey：树形 verify 一次覆盖多条分支",
+    "source": "https://arxiv.org/abs/2401.07851",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1bbc7db3daba87481807ffffec88c60ad072b0ab83220d4bd6731a6fbe3716f1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.07851",
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.10774_medusa_pipeline.png",
+    "title": "Medusa 总览：多 head 并行出候选 → tree attention 一次 verify → 接受最长前缀",
+    "source": "https://arxiv.org/abs/2401.10774",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "5d0f9446831c9f1a78413265b2551ca081065a799329e981ff4909d068156200",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10774",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/03_draft_families.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.10774_roofline_a100.png",
+    "title": "Medusa 论文在 A100 上对 Llama-7B 各算子做的 roofline：decode（ar）全落在带宽斜线上",
+    "source": "https://arxiv.org/abs/2401.10774",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "be5b8fef9712ee60556008475bde6d7c027a8c951556b47295df4e58a0a014e9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10774",
+    "figure_from_caption": "9",
+    "references": [
+      "docs/speculative_decoding/00_decode_bottleneck.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.10774_sparse_tree.png",
+    "title": "Medusa-2 的稀疏树：64 节点、深度 4，红线是猜中的那条",
+    "source": "https://arxiv.org/abs/2401.10774",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "cb86b66a94f1eabd29fd4c86d89ecc7f0556e5edf202bbfa32da50e99800ea25",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10774",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/speculative_decoding/03_draft_families.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.10774_tree_attention.png",
+    "title": "Medusa Fig 2：top-2 × top-3 = 6 条候选，mask 只允许看祖先，位置编码按树深度",
+    "source": "https://arxiv.org/abs/2401.10774",
+    "image_url": "https://arxiv.org/html/2401.10774v3/tree_attention.png",
+    "retrieved": null,
+    "sha256": "202e0142130977f78a8cfcd82031edd0445e7a7ed44bb6dfcaafc08848f9d698",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10774",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000524
+    },
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2401.15077_draft_compare.png",
+    "title": "EAGLE Fig 5：Speculative Sampling / Lookahead / Medusa / EAGLE 在同一前缀上怎么 draft t4、t5",
+    "source": "https://arxiv.org/abs/2401.15077",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b832eeb98f158e57c9c318131596a718883c783c4415d490e5a38dd542b2bb4f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.15077",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/speculative_decoding/03_draft_families.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.15077_fig0_speedup.png",
+    "title": "EAGLE 在 Vicuna / LLaMA2-Chat 上相对 Medusa / Lookahead / 独立小模型的 speedup",
+    "source": "https://arxiv.org/abs/2401.15077",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c957a7f1c959a77598087dbbb6545fbff0c16fce0b8fc814c9c20f791354e564",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.15077",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.15077_pipeline.png",
+    "title": "EAGLE pipeline：上半计算图（绿 embedding / 橙 feature / 蓝雪花=冻住的 target 参数），下半对应生成",
+    "source": "https://arxiv.org/abs/2401.15077",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "fbb12ed8878e4a55c81b2a24b4f150ad2ff2c0575cc764d723a266ee1103beed",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.15077",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.15077_uncertainty.png",
+    "title": "EAGLE Fig 3：f_I 之后 am / always 两条采样，feature 不确定",
+    "source": "https://arxiv.org/abs/2401.15077",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "4d43597b9cc6b7d373288cca2cba8172e1701e99236ffa769636b3e342b3cd96",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.15077",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2402.02057_flow.png",
+    "title": "Lookahead：Jacobi 并行猜测 + n-gram 复用的流程",
+    "source": "https://arxiv.org/abs/2402.02057",
+    "image_url": "https://arxiv.org/html/2402.02057v1/flow.png",
+    "retrieved": null,
+    "sha256": "70a7810ac097bb48206bb7f36ca6242d8b1148069a91db1906bba4f0a83df619",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2402.02057",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.005499
+    },
+    "references": [
+      "docs/speculative_decoding/03_draft_families.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2402.02057_pad_attn.png",
+    "title": "Lookahead 的 padded attention：一次 forward 里并行走多条 n-gram",
+    "source": "https://arxiv.org/abs/2402.02057",
+    "image_url": "https://arxiv.org/html/2402.02057v1/PadAttention.png",
+    "retrieved": null,
+    "sha256": "0c4ea6e32fc7bf5a01218f58acf7aa86862ba8d71f65569bf6aee3b921f7c028",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2402.02057",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.005526
+    },
+    "references": [
+      "docs/speculative_decoding/03_draft_families.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2404.19737_backward.png",
+    "title": "Gloeckle Fig 2：n=2 时按 head 串行 fwd/bwd，避免同时物化 n 份 unembed 梯度",
+    "source": "https://arxiv.org/abs/2404.19737",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1db3015c9cb823e312f5b1bffcfe6bd9acf121308b4ba48634192c81d4effce8",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2404.19737",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/speculative_decoding/04_mtp.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2404.19737_mtp_overview.png",
+    "title": "Gloeckle Fig 1：共享 trunk + n 个独立 head；推理可只用 next-token head，或把其余 head 拿去加速",
+    "source": "https://arxiv.org/abs/2404.19737",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f3263bdb38a22cce5bd7b62048abb07810d422aeb335b5c2ff99593562bbef3e",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2404.19737",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/04_mtp.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2406.16858_dynamic_tree.png",
+    "title": "EAGLE-2：同一预算下，动态树把节点拨到更可能被接受的位置",
+    "source": "https://arxiv.org/abs/2406.16858",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f2a9c2c19e9093fe3e0174671aa9910c164465efc55cdc0feb8a4f24452a5c66",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2406.16858",
+    "references": [
+      "docs/speculative_decoding/02_tree_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2406.16858_method.png",
+    "title": "EAGLE-2 方法示意：draft 置信度 ≈ 接受率，用来长树",
+    "source": "https://arxiv.org/abs/2406.16858",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "19aaccd83a983316c532649ebfa9bf99589b814fd014a785e5583c0ea76e18a2",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2406.16858",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.19437_mtp.png",
+    "title": "DeepSeek-V3 Fig 3：主模型 + 串行 MTP Module 1/2；每层预测 next / next² / next³，因果链完整",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f97a6498f175d2f0c6df42df1f0abade9a7bb7d19306332d68e7fd45a0f5455f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/speculative_decoding/04_mtp.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.01840_alpha.png",
+    "title": "EAGLE vs EAGLE-3 的 n-α：自身估计步数增加时，EAGLE-3 几乎不掉",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "77751c1e42e74247ec50cb394e4ed9bb2d1372242550760aae878a4d121829bc",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "7",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.01840_nofe.png",
+    "title": "EAGLE vs 去掉 l_fea vs EAGLE-3：只有 TTT 能在多步上把 token 猜对",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "431d93330978555821b3fcbe23eac03925d769680e07df458ccab305b42a247c",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.01840_pipeline.png",
+    "title": "EAGLE-3 推理：三层 feature 融合成 g，再和 embedding 一起过单层 decoder",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": "https://arxiv.org/html/2503.01840v3/method.png",
+    "retrieved": null,
+    "sha256": "717c699704a33e2b1056aab373164247c4f4aa79af51f3e22492b15218add447",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "5",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.003064
+    },
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2503.01840_scale.png",
+    "title": "EAGLE-3 随训练数据放大的 scaling；旧架构是平的",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e935961ba2ffe299dddb828873da48a7b417b7e7c41a8eea24b3d06d90f479c5",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.01840_speedup.png",
+    "title": "EAGLE-3 在 chat / reasoning 模型上相对其它无损方法的 speedup",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "75876fcc4dbd92c0cb2dbfcee3c6f6223c6e9dfddff43ea3c5a58f5f7b433e83",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.01840_ttt.png",
+    "title": "TTT 的 attention mask：第 1 步是普通下三角，第 2 步预测 token 与原序列是树状上下文",
+    "source": "https://arxiv.org/abs/2503.01840",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "6fb6ff954f9d9bfb5f2c70923265857eeb5559eb0a30bed9b57f0ae297c1a571",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.01840",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/speculative_decoding/05_eagle.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2602.06036_attn.png",
+    "title": "DFlash 训练 attention：蓝=target context，黄=随机 anchor，绿=mask，白=不可见",
+    "source": "https://arxiv.org/abs/2602.06036",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "0f9225b8fbc01c56695b27c409bb4552c9e2e317a7280bb21ea73f0ae7f77f7d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2602.06036",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2602.06036_draft_latency.png",
+    "title": "DFlash：1/3/5 层并行 draft 的延迟 vs 1 层 EAGLE-3",
+    "source": "https://arxiv.org/abs/2602.06036",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "323b7a4bc4804a14c216e4a25e069995562fb7c56c226dd9554db4efe5f60e2f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2602.06036",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2602.06036_inference.png",
+    "title": "DFlash 推理：fused target feature 注入每层 KV，mask 位一次填完",
+    "source": "https://arxiv.org/abs/2602.06036",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e351cebef34086689234a61ea2bfe14a3de725ce5b9abf7330204fc4fc2625be",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2602.06036",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2602.06036_loss_decay.png",
+    "title": "DFlash：位置衰减 loss 比均匀加权收敛更快、接受长度更高",
+    "source": "https://arxiv.org/abs/2602.06036",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1b64b6991719af4fae9700fcec2d5a27fd0eeb25b4c5ee554067d0ce1a5ff2c8",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2602.06036",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2602.06036_speedup.png",
+    "title": "DFlash vs EAGLE-3 vs AR 在 Qwen3-8B 上的 speedup",
+    "source": "https://arxiv.org/abs/2602.06036",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "80d05194ade220c5024e9db12ecd1dd2f2156f812060d4a8a51094c334d6798d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2602.06036",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.05147_arch.png",
+    "title": "DSpark 一轮：target 出 anchor D → 并行骨干 + 串行 head 出 EFGH 与 c_i → scheduler 丢掉 H → target verify EFG，拒 G 并出 G*",
+    "source": "https://arxiv.org/abs/2607.05147",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "ab7a53ea66423da1afe7a6c11f30ae036ef607b755c9f7ae7bf4a2d6b45712fd",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.05147",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.05147_confidence.png",
+    "title": "固定阈值 vs 调度：阈值太狠伤 τ，太松浪费 verify；scheduler 按负载选点",
+    "source": "https://arxiv.org/abs/2607.05147",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "cb314422804a7160ead3b6ecb6f316339baf510c61e399413a4df4c78ef941a5",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.05147",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.05147_online.png",
+    "title": "DeepSeek-V4 线上：DSpark vs MTP-1 的吞吐–延迟",
+    "source": "https://arxiv.org/abs/2607.05147",
+    "image_url": "https://arxiv.org/html/2607.05147v1/online_service.png",
+    "retrieved": null,
+    "sha256": "be7d4a4167728c15885b719655179c63a6e33d589ccee73d7ac8643266614c65",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.05147",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002974
+    },
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2607.05147_pareto.png",
+    "title": "Pareto 被外推：严 SLA 档位从「不可达」变成可服务",
+    "source": "https://arxiv.org/abs/2607.05147",
+    "image_url": "https://arxiv.org/html/2607.05147v1/online_service_tradeoff.png",
+    "retrieved": null,
+    "sha256": "a3d9bda1650aadce7e516d0c76ff8a43c4358d42232759c4d706d8b84d7f3aa2",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.05147",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001756
+    },
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2607.05147_suffix_decay.png",
+    "title": "条件接受率随位置：并行 DFlash 前缀强、后缀掉；AR EAGLE-3 更平",
+    "source": "https://arxiv.org/abs/2607.05147",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "8068cda740bca5f7fab0ea66ee122255eab935604815e15ff06f47685d1a0666",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.05147",
+    "references": [
+      "docs/speculative_decoding/06_dflash_dspark.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

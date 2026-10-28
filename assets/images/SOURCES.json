@@ -1,0 +1,34 @@
+[
+  {
+    "file": "favicon-512.webp",
+    "title": "LLM Infra Atlas logo",
+    "source": null,
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c6e226c2b6edc8ad28d6c453fa8ff6a622f14a593cfae4c2fc2da32e9aabc68b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "repository_history_only",
+    "repository_record": "https://github.com/llm-infra-atlas/llm-infra-atlas.github.io/blob/52e065bbaecfc42256a25b97713adc8fb1c9a200/assets/images/favicon-512.webp",
+    "references": [
+      "mkdocs.yml"
+    ],
+    "notes": "站点标识；最早随 Initial commit 入库，仓库未记录原始创作或外部来源。 原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。"
+  },
+  {
+    "file": "favicon.ico",
+    "title": "LLM Infra Atlas favicon",
+    "source": null,
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "fcb0860de58edd1e0d4991fa44cf568d5836a09d8434b1ceeef17922807bda03",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "repository_history_only",
+    "repository_record": "https://github.com/llm-infra-atlas/llm-infra-atlas.github.io/blob/52e065bbaecfc42256a25b97713adc8fb1c9a200/assets/images/favicon.ico",
+    "references": [
+      "mkdocs.yml"
+    ],
+    "notes": "站点标识；最早随 Initial commit 入库，仓库未记录原始创作或外部来源。 原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。"
+  }
+]

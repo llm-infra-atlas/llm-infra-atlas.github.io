@@ -67,7 +67,7 @@ prefill 与 decode 跑的是同一个 Transformer，但张量 shape 和瓶颈完
 
 ## 1. 文档怎么读
 
-接下来八篇按下表的顺序展开，每一篇解决一个具体问题、引入对应的机制：
+接下来九篇按下表的顺序展开，每一篇解决一个具体问题、引入对应的机制：
 
 | 文件 | 解决的问题 | 关键机制 |
 |---|---|---|
@@ -79,6 +79,7 @@ prefill 与 decode 跑的是同一个 Transformer，但张量 shape 和瓶颈完
 | [06｜集群调度、Serving 并行与 Overlap](./06_scheduling_parallelism_and_overlap.md) | 单机调度之外，如何组合路由、并行、迁移和多层 overlap？ | TP/PP/DP/EP/CP、DP attention、async scheduler、CUDA Graph、TBO/SBO/DBO、PP overlap、request migration、admission control |
 | [07｜多模态 Serving：理解、生成与流式 Omni](./07_multimodal_serving.md) | 图像/音频理解与图像/视频生成怎样改变 serving？ | encoder budget/cache、变长 image token、E/P/D、embedding transfer、diffusion batching、CFG/SP、TeaCache / Cache-DiT、流式音频指标 |
 | [08｜Benchmark、容量规划与生产化](./08_benchmarking_and_production.md) | 怎样测得可信、配得合理、上线后看得见？ | open-loop benchmark、workload/prefix 模型、容量规划、Prometheus 指标、autoscaling、load shedding、故障与 cache 正确性 |
+| [09｜DeepInfer 的推理策略](./09_deepinfer.md) | 模型结构怎样与生产调度、状态管理配合？ | Attention DP/Wide EP、时间预算、双维路由、共享存储、bounded replay、DSpark、async scheduler |
 
 建议第一次通读时按编号顺序读下来；如果是带着线上问题来查资料，可以按症状直接跳转：
 

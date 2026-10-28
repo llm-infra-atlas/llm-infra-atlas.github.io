@@ -1,0 +1,135 @@
+[
+  {
+    "file": "deepep_low_latency.png",
+    "title": "DeepEP low-latency kernel: hook-based 0-SM double-batch overlap",
+    "source": "https://github.com/deepseek-ai/DeepEP/blob/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/docs/legacy.md",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/DeepEP/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/figures/low-latency.png",
+    "retrieved": null,
+    "sha256": "8694113abc564171272e535f601bb8a329d04a0093febcfdd6eea0b422fad9fe",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "deepep_normal.png",
+    "title": "DeepEP normal kernel: asymmetric-domain forwarding across NVLink + RDMA",
+    "source": "https://github.com/deepseek-ai/DeepEP/blob/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/docs/legacy.md",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/DeepEP/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/figures/normal.png",
+    "retrieved": null,
+    "sha256": "cdaf96ab5e65c336fa8403a0e6bbc7d6c799817ee381ee74e6adc49ddb1082e6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/01_scale_up_nvlink_nvl72.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nccl/allgather.png",
+    "title": "NCCL AllGather：k 个 rank 各 N 值拼成 k*N 并分发给所有",
+    "source": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+    "image_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/_images/allgather.png",
+    "retrieved": null,
+    "sha256": "93b7bf717381477043bc7b8dc34d76c519eb71339af2b67401f37ac1ef0e8c81",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nccl/allreduce.png",
+    "title": "NCCL AllReduce：规约结果分发到所有 rank",
+    "source": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+    "image_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/_images/allreduce.png",
+    "retrieved": null,
+    "sha256": "56ba8399a2d0ae820a989cc1130d37264c5923d36f8852f5eeb057919537a675",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nccl/broadcast.png",
+    "title": "NCCL Broadcast：root 的缓冲区复制到所有 rank",
+    "source": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+    "image_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/_images/broadcast.png",
+    "retrieved": null,
+    "sha256": "0b2d68b232721d1aca8184ad74aafac18b7e181c91321cf03d35418270d4921f",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nccl/reduce.png",
+    "title": "NCCL Reduce：规约结果只存到 root",
+    "source": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+    "image_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/_images/reduce.png",
+    "retrieved": null,
+    "sha256": "751018b537a140fdf7526d8d596bad4a0ebb3a4beced4f5a0bfc56cbc94e48fe",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nccl/reducescatter.png",
+    "title": "NCCL ReduceScatter：规约后按 rank 切块散开",
+    "source": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+    "image_url": "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/_images/reducescatter.png",
+    "retrieved": null,
+    "sha256": "1a8a69eec2115d501cb724ac41197ab4d33cb997f1f0ba24e38f079b1d1689b4",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/hpc/04_collectives.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

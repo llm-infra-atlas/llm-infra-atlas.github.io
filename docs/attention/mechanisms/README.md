@@ -18,7 +18,7 @@
 decode 每 token 的 attention HBM 流量 = N · (每 token cache 字节) · 层数
 ```
 
-在 `N=1M`、Llama-3-70B 式的 GQA-8 配置下，这个式子的取值是每生成一个 token 读 40 GB——以 H100 的 3.35 TB/s 带宽计算，仅读 cache 就需要 12 ms，而整个模型权重只有 140 GB。attention 由此从不起眼的一层变成了 serving 的主要成本。三条路线分别压缩这个式子的不同因子：
+以 80 层、8 个 KV head、head dimension 为 128、BF16 的 GQA 配置为例，128K token 的全部层 KV 约 43 GB；长度增至一百万时约为 328 GB。这里是单请求、全模型的总量，分布式部署还需按实际分片计算每卡流量。长历史因此会显著增加 decode 的带宽与容量压力。三条路线分别压缩这个式子的不同因子：
 
 ```
                                   每 token cache          decode 计算
@@ -35,7 +35,7 @@ decode 每 token 的 attention HBM 流量 = N · (每 token cache 字节) · 层
      Kimi Linear 3:1、Gemma 3 5:1、Qwen3-Next 3:1
 ```
 
-②与③的区别是全章最关键的一点：sparse attention 保留完整且不断增长的 KV cache，只是每一步跳过其中的大部分；linear attention 只保留固定大小的 recurrent state，把历史不可逆地压缩进去。前者的表达力上限就是 full attention（它只做信息选择），后者受 finite-state capacity 约束，但配上 delta rule 之后理论表达力可以超过 full attention（见 [`09`](./09_linear_kda_kimi.md) 第 7 节）。Kimi Linear 论文对此有一段很好的表述，[`11`](./11_hybrid.md) 第 5 节会引用。
+②与③的区别是全章最关键的一点：动态 sparse selection 通常保留可供未来选择的完整 KV，而纯 sliding window 可以淘汰窗口外 KV；linear attention 则保留固定大小的 recurrent state，把历史压缩进去。前者限制每步读取的连接，后者限制状态容量；在特定理论计算模型与任务设定下，delta rule 还具有不同于 softmax Transformer 的状态追踪能力（见 [`09`](./09_linear_kda_kimi.md) 第 7 节）。Kimi Linear 论文对此有一段很好的表述，[`11`](./11_hybrid.md) 第 5 节会引用。
 
 ## 2. 全章统一记号
 
@@ -57,7 +57,7 @@ decode 每 token 的 attention HBM 流量 = N · (每 token cache 字节) · 层
 | $C$ | chunk size（chunkwise 形式的分块长度，实践取 64） | —— |
 | $M$ | $C \times C$ 因果下三角掩码（含对角）；$M^{-}$ 严格下三角（不含对角） | $[C, C]$ |
 
-张量布局一律采用 $[B, T, H, D]$，state 为 $[B, H, K, V]$，与 [[fla:]] 一致，方便对照代码。
+本章张量布局采用 $[B, T, H, D]$，state 为 $[B, H, K, V]$。[[fla:]] 也支持转置后的 state 布局 $[B, H, V, K]$；例如 KDA/GDN layer 会传入 `state_v_first=True`。对照算子时需先检查这个开关，再把实现转换到本章的记号。
 
 > ⚠️ 各篇原论文的向量约定互不相同，阅读代码时务必留意。GLA（[arXiv:2312.06635](https://arxiv.org/abs/2312.06635)）用行向量 $S_t = S_{t-1} + k_t^{\top} v_t$，$o_t = q_t S_t$；Gated DeltaNet（[arXiv:2412.06464](https://arxiv.org/abs/2412.06464)）用 $S \in \mathbb{R}^{d_v \times d_k}$、$S_t = S_{t-1}(\cdot) + \beta_t v_t k_t^{\top}$。**两者与本章记号互为转置。** 写代码时 $(I - \beta k k^{\top})\, S$ 和 $S\, (I - \beta k k^{\top})$ 会静默给出不同结果，因此必须先固定一套约定。本章所有代码都在 `float64` 下与逐步 recurrent 参考实现对齐过（见 §5）。
 
@@ -81,8 +81,9 @@ decode 每 token 的 attention HBM 流量 = N · (每 token cache 字节) · 层
 | **横切 & 路线三** | | |
 | [10 · 门控](./10_gating.md) | **门控**（横切概念）：三个作用位置——状态转移门 / 写入门 / **输出门**；输出门为什么能消灭 attention sink（46.7%→4.8%）；sigmoid vs swish 的实测差异 | Gated Attention、Qwen3-Next、Kimi K3 |
 | [11 · 混合模式：层比例、NoPE 与正反证据](./11_hybrid.md) | **混合模式**：层间混合 vs 层内并行、3:1 从哪来、NoPE 为什么是混合架构的关键、**正反方证据**（Kimi K3 2.8T 成功 vs MiniMax-M2 回退全attention）、完整决策表 | Kimi Linear/K3、Qwen3-Next/3.5、MiniMax-01/M2、Nemotron-H、Jamba、Falcon-H1 |
+| [12 · YOCO 与跨层 KV 复用](./12_cross_layer_kv_yoco.md) | self/cross-decoder、prefill early exit、CLA、CED 与 SWA replay 的边界 | YOCO、DeepSeek-V4.1 |
 
-建议的阅读顺序是：先读本文建立整体框架，再读 01 和 02，把基础以及位置编码、数值稳定这两个「本身不是机制、却决定机制能否落地」的主题铺平。之后按兴趣分两条线：想理解 DeepSeek 的工作依次读 03、04、05；想理解 Kimi 的工作依次读 06、07、08、09。10 集中讲清楚「门控」这个反复出现的概念，11 回到工程决策。kernel 侧的 flash 实现在 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md) 与 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md)。
+建议的阅读顺序是：先读本文建立整体框架，再读 01 和 02，把基础以及位置编码、数值稳定这两个「本身不是机制、却决定机制能否落地」的主题铺平。之后按兴趣分两条线：想理解 DeepSeek 的工作依次读 03、04、05；想理解 Kimi 的工作依次读 06、07、08、09。10 集中讲清楚「门控」这个反复出现的概念，11 回到工程决策，12 解释跨层历史复用。训练的多卡扩展见 [sparse CP](../../parallel/04_cp/05_sparse_attention_cp.md) 与 [KCP](../../parallel/04_cp/06_linear_attention_kcp.md)。kernel 侧的 flash 实现在 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md) 与 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md)。
 
 ## 4. Taxonomy：三个正交的轴
 
@@ -241,7 +242,7 @@ Kimi Linear 论文中「节省 75% KV cache」的说法由此而来：27 层里�
 | Gated Attention | Qiu et al., 2025 | [arXiv:2505.06708](https://arxiv.org/abs/2505.06708) |
 | MiniMax-M2（hybrid 的反方证据） | MiniMax, 2026 | [arXiv:2605.26494](https://arxiv.org/abs/2605.26494) |
 
-参考代码（上游固定版本）：[[fla:]]（flash-linear-attention，commit `81091cc6`，v0.5.2）——linear attention 的 chunkwise Triton kernel，以及 NSA/MoBA 的可训练稀疏实现与 DSA 的 naive 参考；[[flash-attention:]] —— FA 系列。生产 DSA kernel 在 FlashMLA / DeepGEMM，见 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md) §4。
+参考代码（上游固定版本）：[[fla:]]（flash-linear-attention，commit `1b74d1e0`，v0.6.0）——linear attention 的 chunkwise Triton kernel，以及 NSA/MoBA 的可训练稀疏实现与 DSA 的 naive 参考；[[flash-attention:]] —— FA 系列。生产 DSA kernel 在 FlashMLA / DeepGEMM，见 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md) §4。
 
 ---
 

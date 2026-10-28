@@ -1,0 +1,86 @@
+[
+  {
+    "file": "arxiv/1909.08053_attention_mp.png",
+    "title": "Megatron self-attention tensor parallelism split by head",
+    "source": "https://arxiv.org/abs/1909.08053",
+    "image_url": "https://arxiv.org/html/1909.08053v4/attention_mp_2.png",
+    "retrieved": null,
+    "sha256": "27ebb9d840d82c4c81e6a477c9a89cfbfae2585b24e3bdbea6590cf61ff44583",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1909.08053",
+    "figure_from_caption": "3b",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/02_tp_sp/02_transformer_block.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/1909.08053_mlp_mp.png",
+    "title": "Megatron MLP column→row parallel with f/g operators",
+    "source": "https://arxiv.org/abs/1909.08053",
+    "image_url": "https://arxiv.org/html/1909.08053v4/mlp_mp_2.png",
+    "retrieved": null,
+    "sha256": "dc97ec544b13ba1f87f3a90cb54322c4fe20725845558c6f9b49e961e884347e",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1909.08053",
+    "figure_from_caption": "3a",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/02_tp_sp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/1909.08053_passes_mp.png",
+    "title": "Communication operations in one transformer layer under TP",
+    "source": "https://arxiv.org/abs/1909.08053",
+    "image_url": "https://arxiv.org/html/1909.08053v4/passesmp_2.png",
+    "retrieved": null,
+    "sha256": "6d26eec2d22cfbfc20518e20f4a107685b147a87a5c98a750912861d4fe7bd44",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1909.08053",
+    "figure_from_caption": "4",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/02_tp_sp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2205.05198_tp_sp.jpg",
+    "title": "Transformer layer with tensor + sequence parallelism, g and g-bar operators",
+    "source": "https://arxiv.org/abs/2205.05198",
+    "image_url": "https://arxiv.org/html/2205.05198v1/figures/transformer-tensor-sequence-parallel.jpg",
+    "retrieved": null,
+    "sha256": "d783e5c7c470e05ed82ec0add537bdb4f523b0d9988ed7260e4945e73d275f94",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2205.05198",
+    "figure_from_caption": "5",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/02_tp_sp/03_sequence_parallel.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

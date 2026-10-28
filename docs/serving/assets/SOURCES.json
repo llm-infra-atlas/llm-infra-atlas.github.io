@@ -1,0 +1,270 @@
+[
+  {
+    "file": "arxiv/2112.10752_ldm_arch.png",
+    "title": "Latent Diffusion pipeline",
+    "source": "https://arxiv.org/abs/2112.10752",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "7d7d20e4efcd9ab4bfcf3bb1a1f8e8f8c4d26e340ee8d99e3bf94b4e13d1d42d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2112.10752",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/serving/07_multimodal_serving.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2304.08485_llava_arch.png",
+    "title": "LLaVA encoder-projector-LLM architecture",
+    "source": "https://arxiv.org/abs/2304.08485",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "af50c3cc3f5cc07ca87b8fe7c40102299cab4d5ab48b0a37832ffeb290d4d9c6",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2304.08485",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/serving/07_multimodal_serving.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2309.06180_block_table.png",
+    "title": "PagedAttention logical/physical block table",
+    "source": "https://arxiv.org/abs/2309.06180",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "953709f820c68f6c22600366a8960f07522f34fd0eeb1e96169c4e9b29e840b5",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2309.06180",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/serving/03_paged_attention_and_kv_cache.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2311.18677_splitwise_layerwise_transfer.png",
+    "title": "Splitwise layerwise transfer",
+    "source": "https://arxiv.org/abs/2311.18677",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1d77e09749a853b5347ce7a8cdbbc27863830491cbcbcbd9019706aad2138852",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2311.18677",
+    "figure_from_caption": "11b",
+    "references": [
+      "docs/serving/05_disaggregation_and_kv_transfer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2312.07104_radix_attention.png",
+    "title": "RadixAttention tree evolution",
+    "source": "https://arxiv.org/abs/2312.07104",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3bd679c3bfb89e8c3f9a7015538e9a673b9d8e31df37e4e3c5cee46b8e2930e9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2312.07104",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/serving/04_prefix_and_hierarchical_cache.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.09670_distserve_architecture.png",
+    "title": "DistServe architecture",
+    "source": "https://arxiv.org/abs/2401.09670",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c0b0e61f35bec159df75b1f5b53c3eff71256953cf624147e8eeb937afbcdd72",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.09670",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/serving/05_disaggregation_and_kv_transfer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2403.02310_generation_stall.png",
+    "title": "Sarathi-Serve 对不同调度策略的 generation stall 对比",
+    "source": "https://arxiv.org/abs/2403.02310",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e1c265678b80843fb7e9ba748b7b770e803782804527ea004d4863e40ab6c666",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2403.02310",
+    "figure_from_caption": "7",
+    "references": [
+      "docs/serving/02_batching_and_chunked_prefill.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2405.04437_vattention.png",
+    "title": "vAttention virtual/physical memory mapping",
+    "source": "https://arxiv.org/abs/2405.04437",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "feb181ec3447351e78374c635778d3d0a4abc66a180d9f638226511af8280ebd",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.04437",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/serving/03_paged_attention_and_kv_cache.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2405.16444_cacheblend_overview.png",
+    "title": "CacheBlend system",
+    "source": "https://arxiv.org/abs/2405.16444",
+    "image_url": "https://arxiv.org/html/2405.16444v3/overview.png",
+    "retrieved": null,
+    "sha256": "ae8913a0e6c788745b3714f23e8ab1b3ccdb35e3a5fa4161dd0d031468d5174e",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.16444",
+    "figure_from_caption": "11",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.00289
+    },
+    "references": [
+      "docs/serving/04_prefix_and_hierarchical_cache.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2406.03243_llumnix_live_migration.png",
+    "title": "Llumnix live KV migration",
+    "source": "https://arxiv.org/abs/2406.03243",
+    "image_url": "https://arxiv.org/html/2406.03243v1/migration-crop.png",
+    "retrieved": null,
+    "sha256": "3d54b2fcfd6d0f55565ce954e8cf18159a717d8813b53f81a29e5379a534dc16",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2406.03243",
+    "figure_from_caption": "6",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002368
+    },
+    "references": [
+      "docs/serving/06_scheduling_parallelism_and_overlap.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2407.00079_mooncake_architecture.png",
+    "title": "Mooncake KVCache-centric architecture",
+    "source": "https://arxiv.org/abs/2407.00079",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "5123858cc76036ce164dbbb06d4c25188b186483288f0dc8f881c0a5c26a0644",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2407.00079",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/serving/05_disaggregation_and_kv_transfer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "deepinfer_architecture.png",
+    "title": "DeepInfer inference deployment Q&A: architecture overview",
+    "source": "https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/doc/inference_deployment_qa.md",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/DeepInfer/553741557a57df44a46fb3ab72b6aafeaf945337/doc/images/architecture_overview.png",
+    "retrieved": "2026-10-28",
+    "sha256": "a04aed83c96ddc4a6ec7e578b961d8a3fdbea16ac72a4f51b3cc2221b858beb5",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "references": [
+      "docs/serving/09_deepinfer.md"
+    ]
+  },
+  {
+    "file": "lmcache_deployment_modes.png",
+    "title": "LMCache deployment modes",
+    "source": "https://github.com/LMCache/LMCache/blob/09bc14c0a5fd6eec9afc3634f8f726f5249febf7/asset/deployment_modes_light.png",
+    "image_url": "https://raw.githubusercontent.com/LMCache/LMCache/09bc14c0a5fd6eec9afc3634f8f726f5249febf7/asset/deployment_modes_light.png",
+    "retrieved": null,
+    "sha256": "282ad13b41625cccff85e87dab57d17866d3679c70e2dc321808cd0fe31a370a",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_image_comparison",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/serving/04_prefix_and_hierarchical_cache.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "mooncake_topology_matrix.jpg",
+    "title": "Mooncake topology matrix",
+    "source": "https://github.com/kvcache-ai/Mooncake/blob/f90ae691f109e49a60920e0c8abbf7e572826d8c/image/topology-matrix.png",
+    "image_url": "https://raw.githubusercontent.com/kvcache-ai/Mooncake/f90ae691f109e49a60920e0c8abbf7e572826d8c/image/topology-matrix.png",
+    "retrieved": null,
+    "sha256": "4a151ee94a1e0c31b1ce8b7452601a11cb921ba486b08967d857e46cebe00e75",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_image_comparison",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/serving/05_disaggregation_and_kv_transfer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "mooncake_transfer_engine.png",
+    "title": "Mooncake Transfer Engine",
+    "source": "https://github.com/kvcache-ai/Mooncake/blob/f90ae691f109e49a60920e0c8abbf7e572826d8c/image/transfer-engine.png",
+    "image_url": "https://raw.githubusercontent.com/kvcache-ai/Mooncake/f90ae691f109e49a60920e0c8abbf7e572826d8c/image/transfer-engine.png",
+    "retrieved": null,
+    "sha256": "ea07b101b3d56e431e4a926756c7e6fd6e75723790de9cffdfdee81c194b4689",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_image_comparison",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/serving/05_disaggregation_and_kv_transfer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

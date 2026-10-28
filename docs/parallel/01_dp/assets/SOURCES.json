@@ -1,0 +1,117 @@
+[
+  {
+    "file": "arxiv/1910.02054_zero_memory.png",
+    "title": "ZeRO 各阶段的模型状态显存",
+    "source": "https://arxiv.org/abs/1910.02054",
+    "image_url": "https://arxiv.org/html/1910.02054v3/memory-consumption-v4.PNG",
+    "retrieved": null,
+    "sha256": "6314227cb8711b0719d851122f714c8f2cca459865e3fe8093cd28cfba475c10",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1910.02054",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/01_dp/02_zero_and_distributed_optimizer.md",
+      "docs/parallel/01_dp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2006.15704_ddp_overlap.png",
+    "title": "DDP overlapping gradient all-reduce with the backward pass",
+    "source": "https://arxiv.org/abs/2006.15704",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b17a8d950ab7d5da135763bb3957ce42a1986639a9ff637a649c6dc15fb8cfc9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2006.15704",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/parallel/01_dp/01_ddp_and_overlap.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2006.15704_ddp_overview.png",
+    "title": "PyTorch DDP building blocks: bucketing, autograd hook, reducer",
+    "source": "https://arxiv.org/abs/2006.15704",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "d07fb47857f4cf660b1496268ce5a12c152545dd0f0b1cff60443f270848670b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2006.15704",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/parallel/01_dp/01_ddp_and_overlap.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2304.11277_fsdp_overlap.png",
+    "title": "FSDP 通信与计算的 overlap",
+    "source": "https://arxiv.org/abs/2304.11277",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "896bd40c58b1b628285c126603f88800a904a8b883542f16031e17995e8455e3",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2304.11277",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/parallel/01_dp/03_fsdp.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2304.11277_fsdp_overview.png",
+    "title": "2304.11277_fsdp_overview",
+    "source": "https://arxiv.org/abs/2304.11277",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "a41aae40e7e5a56a21bfac16e361bd6d50f34e126dc5521a90620a61c8d666e1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "filename_paper_id",
+    "arxiv_id": "2304.11277",
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "fsdp2_sharding.png",
+    "title": "PyTorch FSDP2 tutorial: all-gather and reduce-scatter",
+    "source": "https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html",
+    "image_url": "https://docs.pytorch.org/tutorials/_images/fsdp_sharding.png",
+    "retrieved": "2026-10-28",
+    "sha256": "8a5a008d9c91df3de55b84497dcf00c9b80ff0a421366c48c3c95f73cc3a4cd6",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "references": [
+      "docs/parallel/01_dp/02_zero_and_distributed_optimizer.md"
+    ]
+  },
+  {
+    "file": "fsdp2_workflow.png",
+    "title": "PyTorch FSDP2 tutorial: workflow",
+    "source": "https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html",
+    "image_url": "https://docs.pytorch.org/tutorials/_images/fsdp_workflow.png",
+    "retrieved": "2026-10-28",
+    "sha256": "47b8a1a89b5cbd9199493ae56841e4deff0b44372515121b4bfeecfa6160efd8",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "references": [
+      "docs/parallel/01_dp/03_fsdp.md"
+    ]
+  }
+]

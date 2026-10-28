@@ -1,0 +1,310 @@
+[
+  {
+    "file": "arxiv/2310.10537_mx_block_layout.png",
+    "title": "MX block 布局",
+    "source": "https://arxiv.org/abs/2310.10537",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "6b2b178815c44ca702611647c4a96aeac263957cfc1a11898a80bc4187227951",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.10537",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2310.10537_mx_compute_flow.png",
+    "title": "MX 训练 compute flow",
+    "source": "https://arxiv.org/abs/2310.10537",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "d4c4d0198d1d815b83a9ddba285af830a392333278c887a5574d6247addd9bca",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.10537",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.19437_fp8_finegrained_quant_accum.png",
+    "title": "细粒度量化与高精度累加",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": "https://arxiv.org/html/2412.19437v2/fp8-128accumulatorv4.png",
+    "retrieved": null,
+    "sha256": "413970c451588ea9387d0728efead0e92dae56156fbfab3c69baf55b148397c9",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "7",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.005552
+    },
+    "references": [
+      "docs/low_precision/01_deepseek_fp8_hopper.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2412.19437_fp8_framework.png",
+    "title": "DeepSeek-V3 FP8 mixed precision framework",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": "https://arxiv.org/html/2412.19437v2/fp8-frameworkv3.png",
+    "retrieved": null,
+    "sha256": "a4d42eccc7fe41662375dd911935ed7472ca39bcb045ef4a060bc4a0dac2ef57",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "6",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.006307
+    },
+    "references": [
+      "docs/low_precision/01_deepseek_fp8_hopper.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2412.19437_fp8_vs_bf16_loss.png",
+    "title": "FP8 vs BF16 loss 对比",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": "https://arxiv.org/html/2412.19437v2/fp8-v.s.-bf16.png",
+    "retrieved": null,
+    "sha256": "9b71974f175a7908d11b1a1f0401362105d4969296f0a9dd85ddaf85d66f3c94",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "10",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.004059
+    },
+    "references": [
+      "docs/low_precision/01_deepseek_fp8_hopper.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nvidia_blackwell_ultra_nvfp4_throughput.png",
+    "title": "Dense low precision compute 对比",
+    "source": "https://developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "27d5b99cd53123ef50a5b8312ff9593a327a337a088c68feb4fc60d0b73f6128",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_blackwell_ultra_sm_architecture.png",
+    "title": "Blackwell Ultra SM 架构",
+    "source": "https://developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c88af82a2bcfd6e0e83f575df83a9ff1dee624edc5823a9edc0e3fb219250158",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_low_precision_perf_by_generation.png",
+    "title": "NVIDIA 各代 GPU 最低精度格式的峰值算力演进",
+    "source": "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "57bc58d4c43cebb68eac052cb123a15caf91b740055bde700a29c596f6f0c687",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/low_precision/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_mxfp8_block_scaling.png",
+    "title": "MX 的 bit 预算",
+    "source": "https://developer.nvidia.com/blog/per-tensor-and-per-block-scaling-strategies-for-effective-fp8-training/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "08e7f78e383dc69b1e02e95bae38eb5168806098f4069f4f1a2dc3882f04dbbd",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_mxfp8_nemotron_validation_perplexity.png",
+    "title": "MXFP8 vs BF16 validation perplexity",
+    "source": "https://developer.nvidia.com/blog/per-tensor-and-per-block-scaling-strategies-for-effective-fp8-training/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "993ed31f284bf1270ccb850f3772a1a423a73dc7fcf7492b99383baef2f0f961",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_accuracy_deepseek_r1.png",
+    "title": "DeepSeek-R1-0528 FP8 vs NVFP4",
+    "source": "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "0b7a2b9ffc896104c5b13929aee79def7f025bb59e470aaa8f6dbe606bb5748f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "6",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_e8m0_vs_e4m3_scaling.png",
+    "title": "E8M0 vs E4M3 scale",
+    "source": "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3c5e88f0f50cb889eac97a6bcc3ad4d1a029eebae1ad504470fdf35496d859a9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_gb300_gemm_7x.png",
+    "title": "GB300 NVFP4 GEMM 7×",
+    "source": "https://developer.nvidia.com/blog/nvfp4-trains-with-precision-of-16-bit-and-speed-and-efficiency-of-4-bit/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "43785bdfe9c62ed48f71a5ea685bdd644fb58924fb722926dfce1c86c09e1918",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_pretraining_downstream.png",
+    "title": "FP8 vs NVFP4 下游任务",
+    "source": "https://developer.nvidia.com/blog/nvfp4-trains-with-precision-of-16-bit-and-speed-and-efficiency-of-4-bit/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "899c33459c095d5461c6d1064f87ba7d98983b96c22e097f287d37fa7277f6f1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_pretraining_techniques.png",
+    "title": "NVFP4 pretraining techniques",
+    "source": "https://developer.nvidia.com/blog/nvfp4-trains-with-precision-of-16-bit-and-speed-and-efficiency-of-4-bit/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f2b1b9ee5be9f7826d37b1391668207c783fddec2bfb52b9ee48cfef49d51279",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_pretraining_validation_loss.png",
+    "title": "NVFP4 vs FP8 validation loss",
+    "source": "https://developer.nvidia.com/blog/nvfp4-trains-with-precision-of-16-bit-and-speed-and-efficiency-of-4-bit/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "842690fb17939d3c3bb129c35bf19b995eb5b33e7c31e849af2ba9f0db3c68af",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/low_precision/02_blackwell_mxfp_nvfp4.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_two_level_scaling.png",
+    "title": "NVFP4 two-level scaling",
+    "source": "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "c680f37b242ad3b96c481d7c1d0456fe3c7c0f1df2412962b4a5bdbe38e07a0b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nvidia_nvfp4_vs_mxfp4_block_structure.png",
+    "title": "MXFP4 vs NVFP4 block 结构",
+    "source": "https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "86a126fc48601a96016db76c456376d7325bce2c476920da9c93ff2287a30461",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/low_precision/00_formats_and_scaling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

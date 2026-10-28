@@ -1,0 +1,218 @@
+[
+  {
+    "file": "2203.02155_instructgpt_pipeline.png",
+    "title": "InstructGPT 的三阶段 post-training 流程",
+    "source": "https://arxiv.org/abs/2203.02155",
+    "image_url": "https://arxiv.org/html/2203.02155v1/InstructGPT_Diagram3.1.png",
+    "retrieved": null,
+    "sha256": "8c6c36474d2b8a2999a25af571ddaa10123475d3cb44567be7d1b1a573fc4403",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2203.02155",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2509.18521_april_bubble.png",
+    "title": "APRIL 展示的 rollout bubble",
+    "source": "https://arxiv.org/abs/2509.18521",
+    "image_url": "https://arxiv.org/html/2509.18521v3/figs/bubble.png",
+    "retrieved": null,
+    "sha256": "7f516de1d1243de751a572e90f9c2139f1cc1800d549d6c2d2ccce4f559fa4e0",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2509.18521",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/03_async_partial_rollout.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2509.18521_april_length_distribution.png",
+    "title": "APRIL / DAPO 场景中的 rollout 长尾分布",
+    "source": "https://arxiv.org/abs/2509.18521",
+    "image_url": "https://arxiv.org/html/2509.18521v3/figs/distribution_of_three_dataset.png",
+    "retrieved": null,
+    "sha256": "5e2c11e8109ebca9204a7edec1f86bd33d718d190ea149483afc10d147854ef6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2509.18521",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/algorithms/03_grpo_family.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2509.18521_april_method.png",
+    "title": "APRIL active partial scheduling",
+    "source": "https://arxiv.org/abs/2509.18521",
+    "image_url": "https://arxiv.org/html/2509.18521v3/figs/method.png",
+    "retrieved": null,
+    "sha256": "29759616e89e8123bbdb1f8f65f5d85208449535c38fefe9851ae5c9f6943283",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2509.18521",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/03_async_partial_rollout.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2510.11370_r3_overview.png",
+    "title": "R3 总览",
+    "source": "https://arxiv.org/abs/2510.11370",
+    "image_url": "https://arxiv.org/html/2510.11370v2/ICLR-TOP.png",
+    "retrieved": null,
+    "sha256": "e201808c0efa9a2b375701488d8aa12a7885e10030145336cb749bd4180faefd",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2510.11370",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/04_consistency_determinism.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "checkpoint_engine_arch.png",
+    "title": "Checkpoint Engine architecture",
+    "source": "https://github.com/MoonshotAI/checkpoint-engine/blob/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/README.md",
+    "image_url": "https://raw.githubusercontent.com/MoonshotAI/checkpoint-engine/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/figures/checkpoint-engine.png",
+    "retrieved": null,
+    "sha256": "6f0c148bdb41b1856eaea5a145e58f22055d8b9c1e4f657403808a87c961100a",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/05_weight_sync.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "checkpoint_engine_overlap.png",
+    "title": "Checkpoint Engine update/copy overlap",
+    "source": "https://github.com/MoonshotAI/checkpoint-engine/blob/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/figures/overlap-update-and-copy.png",
+    "image_url": "https://raw.githubusercontent.com/MoonshotAI/checkpoint-engine/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/figures/overlap-update-and-copy.png",
+    "retrieved": null,
+    "sha256": "abec7c55abf47ff61cba62f6b54696d4584c6075695f52d1e10b1470c96f85f7",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_image_comparison",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/05_weight_sync.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "checkpoint_engine_pipeline.png",
+    "title": "Checkpoint Engine bucket pipeline",
+    "source": "https://github.com/MoonshotAI/checkpoint-engine/blob/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/README.md",
+    "image_url": "https://raw.githubusercontent.com/MoonshotAI/checkpoint-engine/d1de07b3aacff34050d09c3efa093f9a2fcdcf73/figures/pipeline.png",
+    "retrieved": null,
+    "sha256": "4c43367d340c7f3364a2d276b565ef962184d08ae1cca1f6e97353a396d6ce99",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/05_weight_sync.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "sglang_deterministic_chunked_prefill.png",
+    "title": "deterministic chunked prefill 的 split 对齐",
+    "source": "https://lmsys.org/blog/2025-09-22-sglang-deterministic/",
+    "image_url": "https://www.lmsys.org/images/blog/deterministic/chunked_prefill.png",
+    "retrieved": null,
+    "sha256": "563b1e2ff1b94eefbc055412bbac42b5b255bf1d8ae2b9616b5b24aecfd37178",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/04_consistency_determinism.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "sglang_deterministic_intro.png",
+    "title": "dynamic batch 为什么会引入不同 reduction",
+    "source": "https://lmsys.org/blog/2025-09-22-sglang-deterministic/",
+    "image_url": "https://www.lmsys.org/images/blog/deterministic/deterministic_intro.png",
+    "retrieved": null,
+    "sha256": "7be8c9db6583a43ee79f080915d1fa0639b407591bb3c25b15b0369da12a7160",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/04_consistency_determinism.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "slime_arch.png",
+    "title": "slime architecture",
+    "source": "https://github.com/THUDM/slime/blob/41014d1f29e201137fdffce737bb8bac65bc5219/README.md",
+    "image_url": "https://raw.githubusercontent.com/THUDM/slime/41014d1f29e201137fdffce737bb8bac65bc5219/imgs/arch.png",
+    "retrieved": null,
+    "sha256": "83f7bf608d739a96f053bf4685218772bdc871914f66b19ee11989b0bd6b0e8d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/post_train/infra/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

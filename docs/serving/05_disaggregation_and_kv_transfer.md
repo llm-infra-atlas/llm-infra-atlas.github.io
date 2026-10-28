@@ -428,3 +428,7 @@ P/D 分离本质上是集群层面在空间维度上的一次拆分：把同一�
 - Qin et al., *Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving*, FAST 2025 Best Paper（[arXiv:2407.00079](https://arxiv.org/abs/2407.00079)；[USENIX PDF](https://www.usenix.org/system/files/fast25-qin.pdf)）。
 - Mooncake source：[[mooncake:mooncake-transfer-engine/]]、`mooncake-store/`、[[mooncake:docs/source/design/]]。
 - vLLM/SGLang/LMCache integration：本篇所列上游仓库 paths。
+
+## DeepInfer 的 E/P/D 案例
+
+DeepSeek 公布的系统独立部署 vision encoder、prefill、decode，并让后两者采用不同大小的 EP/DP 组。这说明分离的不只是队列，也是并行度与硬件效率的工作点；共享存储再把历史复用与计算实例解耦。该生产编排不完整包含在开源离线引擎中，范围与原理见 [DeepInfer 的推理策略](./09_deepinfer.md)。

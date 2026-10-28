@@ -173,17 +173,20 @@ $$
 
 讲完了算法本身，最后落在 LR schedule 上。`OptimizerParamScheduler`（[[megatron-lm:megatron/core/optimizer_param_scheduler.py#L100]]）同时管着 lr 和 weight decay 两条曲线。`get_lr`（218-282）的曲线形状是这样的：
 
-```
-warmup 段（num_steps ≤ lr_warmup_steps）:  lr = init_lr + (max_lr − init_lr)·t/T_warmup   # 线性
-之后按 lr_decay_style:
-  constant              lr = max_lr
-  inverse-square-root   lr = max_lr·√T_warmup/√t        # 244-248
-  linear                coeff = 1 − decay_ratio
-  cosine                coeff = 0.5·(cos(π·decay_ratio) + 1)
-  WSD                   stable 段 coeff = 1；最后 wsd_decay_steps 内按
-                        linear/cosine/exponential/minus_sqrt 衰减          # 262-276
-lr = min_lr + coeff·(max_lr − min_lr)                   # 地板 min_lr
-```
+令步数为 $t$，warmup 长度为 $T_w$，初始、最大和最小学习率分别为 $\eta_0,\eta_{\max},\eta_{\min}$。warmup 为
+
+$$
+\eta(t)=\eta_0+(\eta_{\max}-\eta_0)\frac{t}{T_w},\qquad 0\le t\le T_w.
+$$
+
+之后，constant 直接取 $\eta_{\max}$；inverse-square-root 使用 $\eta_{\max}\sqrt{T_w/t}$（`:244–248`）。设 warmup 后的归一化 decay progress 为 $r\in[0,1]$，linear/cosine 则通过
+
+$$
+\eta=\eta_{\min}+c(r)(\eta_{\max}-\eta_{\min}),\qquad
+c(r)=\begin{cases}1-r,&\text{linear},\\\tfrac12(1+\cos(\pi r)),&\text{cosine}\end{cases}
+$$
+
+控制衰减。WSD 在 stable 段取 $c=1$，仅最后 `wsd_decay_steps` 内采用配置的 linear/cosine/exponential/minus_sqrt 形式（`:262–276`）。零 warmup 与超出 decay 区间时的边界处理以调度器分支为准。
 
 其中 $\mathrm{decay\_ratio} = (t - T_{\mathrm{warmup}}) / (T_{\mathrm{decay}} - T_{\mathrm{warmup}})$。**WSD**（warmup-stable-decay）的价值：stable 段不按 cosine 预定终点，decay 段可以随时启动、从 stable 段 anneal 出一个可用的模型，适合训练长度不确定或要多次取中间 ckpt 的场景。
 

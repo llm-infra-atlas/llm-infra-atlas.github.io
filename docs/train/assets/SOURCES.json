@@ -1,0 +1,159 @@
+[
+  {
+    "file": "1412.6980_adam_convergence.png",
+    "title": "Adam 收敛对比",
+    "source": "https://arxiv.org/abs/1412.6980",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "f82fbedc863849533543dd9e9a8c8212e4323343f1bb5365ab05f6ad69a6143d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1412.6980",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/train/02_optimizer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "1710.03740_mixed_precision_iter.png",
+    "title": "mixed precision iteration",
+    "source": "https://arxiv.org/abs/1710.03740",
+    "image_url": "https://arxiv.org/html/1710.03740v3/mixed_prec_iteration.png",
+    "retrieved": null,
+    "sha256": "2df1f5b8cb50237eaa4bb0f69b8147d93f756310aef28dd0797dc0c71e4d827f",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1710.03740",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/train/02_optimizer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2101.06840_zero_offload_dataflow.png",
+    "title": "ZeRO-Offload dataflow",
+    "source": "https://arxiv.org/abs/2101.06840",
+    "image_url": "https://arxiv.org/html/2101.06840v1/dataflow_new.png",
+    "retrieved": null,
+    "sha256": "0005bb4842214f3736a22ce6b159a907e347045d90091e7eff5ff9ead01b4c90",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2101.06840",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002576
+    },
+    "references": [
+      "docs/train/02_optimizer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2205.05198_selective_recompute.jpg",
+    "title": "selective recompute 范围",
+    "source": "https://arxiv.org/abs/2205.05198",
+    "image_url": "https://arxiv.org/html/2205.05198v1/figures/self-attention.jpg",
+    "retrieved": null,
+    "sha256": "8343d35131227bed2f51e1963a01041acc7bf2c848b9c12b741599cc34d7a16a",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2205.05198",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/train/06_activation_recompute_offload.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "2502.16982_muon_scaling.png",
+    "title": "Muon scaling law",
+    "source": "https://arxiv.org/abs/2502.16982",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9d92ad21808794ddec794a5bf0c517dcc3d186b0dd6919724ad1fa79c2c180d9",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.16982",
+    "figure_from_caption": "1a",
+    "references": [
+      "docs/train/02_optimizer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/1910.02054_zero_memory.png",
+    "title": "ZeRO per-device memory consumption across Pos/Pg/Pp stages",
+    "source": "https://arxiv.org/abs/1910.02054",
+    "image_url": "https://arxiv.org/html/1910.02054v3/memory-consumption-v4.PNG",
+    "retrieved": null,
+    "sha256": "6314227cb8711b0719d851122f714c8f2cca459865e3fe8093cd28cfba475c10",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1910.02054",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/train/07_memory_model.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2006.15704_ddp_overview.png",
+    "title": "PyTorch DDP building blocks: bucketing, autograd hook, reducer",
+    "source": "https://arxiv.org/abs/2006.15704",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "d07fb47857f4cf660b1496268ce5a12c152545dd0f0b1cff60443f270848670b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2006.15704",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/train/05_grad_param_buffer.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2205.05198_pipeline_activations.png",
+    "title": "Activation memory per pipeline stage, decreasing from first to last",
+    "source": "https://arxiv.org/abs/2205.05198",
+    "image_url": "https://arxiv.org/html/2205.05198v1/figures/pipeline_activations_dealloc.png",
+    "retrieved": null,
+    "sha256": "09427bd12b5bd2454c525c08d26220ec5470e22f256c9fcab75652adb63651e6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2205.05198",
+    "figure_from_caption": "9",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/train/07_memory_model.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

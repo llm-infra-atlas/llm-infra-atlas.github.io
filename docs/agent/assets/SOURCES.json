@@ -1,0 +1,75 @@
+[
+  {
+    "file": "arxiv/2210.03629_teaser.png",
+    "title": "ReAct 把 Standard / CoT / Act-only / ReAct 四条轨迹画在同一道 HotpotQA 题上",
+    "source": "https://arxiv.org/abs/2210.03629",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "86b7beb023ad56a5970423a0d2099bc57a0f5889d3ef065c70fe124685b1e4e2",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2210.03629",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/agent/01_loop_and_tool_use.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2302.04761_approach.png",
+    "title": "Toolformer：采样调用 → 执行 → 用是否降低后续损失来过滤",
+    "source": "https://arxiv.org/abs/2302.04761",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e056dd4f787a0861922bb49220ddccceadfed2995bc9af9dcdf34dea0e1665d3",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2302.04761",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/agent/02_classic_works.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2402.01030_action_space.png",
+    "title": "同一道「四国比价」题：左边 JSON 逐步调 API，右边一段 Python 循环做完",
+    "source": "https://arxiv.org/abs/2402.01030",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e8fc29e55fe314cb7b6e70a3cb5692fa6a3e17fe34a8d673257f77102f398d16",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2402.01030",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/agent/01_loop_and_tool_use.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2405.15793_overview.png",
+    "title": "SWE-agent：LM ↔ ACI ↔ Computer，命令和反馈都按 LM 来设计",
+    "source": "https://arxiv.org/abs/2405.15793",
+    "image_url": "https://arxiv.org/html/2405.15793v3/swe_agent_overview.png",
+    "retrieved": null,
+    "sha256": "037798afaf0b7123ad56f18f341358c1455298d352c7872474b2309df31a17cf",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.15793",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000792
+    },
+    "references": [
+      "docs/agent/02_classic_works.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

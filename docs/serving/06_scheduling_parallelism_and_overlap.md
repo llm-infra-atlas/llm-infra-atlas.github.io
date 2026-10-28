@@ -360,3 +360,7 @@ cache: lookup / L3-L2 / L2-L1 / wait / fallback
 - SGLang EP/PP docs：[[sglang:docs/advanced_features/expert_parallelism.md]]、`pipeline_parallelism.md`。
 - vLLM DBO/CUDA Graph docs：[[vllm:docs/design/dbo.md]]、`cuda_graphs.md`。
 - 训练侧通信/overlap 底座：[《TP/SP 的通信-计算 overlap 与工程优化》](../parallel/02_tp_sp/04_overlap_and_optimizations.md)、[《Expert Parallelism（EP）：Infra 视角深入》](../parallel/05_ep/README.md)。
+
+## DeepInfer 的调度协同
+
+DeepInfer 将 Attention DP 与 MoE EP 组合，并把请求路由和 EPLB 分成两层。Decode 路由同时考虑并发数与历史负载，异步 scheduler 则区分可提前确定的总预算和必须等待 GPU confidence 的逐请求验证长度。这些策略及其依赖关系见 [DeepInfer 的推理策略](./09_deepinfer.md)。

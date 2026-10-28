@@ -1,0 +1,184 @@
+[
+  {
+    "file": "active_memory_timeline.png",
+    "title": "Active Memory Timeline",
+    "source": "https://docs.pytorch.org/docs/2.9/torch_cuda_memory.html",
+    "image_url": "https://docs.pytorch.org/docs/2.9/_images/active_memory_timeline.png",
+    "retrieved": null,
+    "sha256": "163d6d1ae4ae67e4cd98a03bdbefbfd37399f478ff0008eadc91af664aff5e5d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/02_memory_profiling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "allocator_state_history.png",
+    "title": "Allocator State History：segment 如何被切成 block",
+    "source": "https://docs.pytorch.org/docs/2.9/torch_cuda_memory.html",
+    "image_url": "https://docs.pytorch.org/docs/2.9/_images/allocator_state_history.png",
+    "retrieved": null,
+    "sha256": "f14edfe988f4973c94a8b1f3d338a386d8c99aa19e0bb6285ef439eaa2238fdb",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/02_memory_profiling.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "ncu_memory_chart_a100.png",
+    "title": "ncu Memory Workload Analysis 的 memory chart",
+    "source": "https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html",
+    "image_url": "https://docs.nvidia.com/nsight-compute/_images/memory-chart-a100.png",
+    "retrieved": null,
+    "sha256": "1286eddd9d5383982d204c5d2e664104855dea244ae7d12196ab62171661f2d3",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/03_nsight_compute.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "ncu_roofline_chart.png",
+    "title": "ncu roofline 图",
+    "source": "https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html",
+    "image_url": "https://docs.nvidia.com/nsight-compute/_images/roofline-overview.png",
+    "retrieved": null,
+    "sha256": "35761d8c75bb3e5a10979b104c41822f6ee9c61f7f0824323d95c0cafb7c31f4",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/03_nsight_compute.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "ncu_sol_details.png",
+    "title": "ncu Details 页的 SpeedOfLight section",
+    "source": "https://docs.nvidia.com/nsight-compute/NsightCompute/index.html",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "49ac96a818ee5d331cbbb3762c29e9eb0b1b171ed9c6efe1d15925677987be0b",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/profiling/03_nsight_compute.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "nsys_gpu_metrics_row.png",
+    "title": "nsys GPU metrics 采样行",
+    "source": "https://docs.nvidia.com/nsight-systems/UserGuide/index.html",
+    "image_url": "https://docs.nvidia.com/nsight-systems/_images/gpu-metrics-timeline.png",
+    "retrieved": null,
+    "sha256": "c56f892fbee65943ac5a1ad868a12c47e5aa23fe593892127b40017176bdf832",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/01_timeline_tracing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nsys_nvtx_rows.png",
+    "title": "NVTX 在 nsys timeline 上的显示",
+    "source": "https://docs.nvidia.com/nsight-systems/UserGuide/index.html",
+    "image_url": "https://docs.nvidia.com/nsight-systems/_images/nvtx-screenshot.png",
+    "retrieved": null,
+    "sha256": "77bff44001c40728d843a7cc2c165c4b1b518a823841a368e3064693cf23261c",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/01_timeline_tracing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nsys_timeline_llama2_sft_gh200.png",
+    "title": "nsys timeline：Llama2-7B SFT on GH200",
+    "source": "https://developer.nvidia.com/blog/profiling-llm-training-workflows-on-nvidia-grace-hopper/",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e38ee4f8a6a172d915dc2db397a80a6ecc27cf24f85103589c33cde73d5be5fa",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/profiling/01_timeline_tracing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "torch_profiler_chrome_trace.png",
+    "title": "chrome trace 的 CPU/GPU 时间线",
+    "source": "https://docs.pytorch.org/tutorials/recipes/recipes/profiler_recipe.html",
+    "image_url": "https://docs.pytorch.org/tutorials/_images/trace_img.png",
+    "retrieved": null,
+    "sha256": "ee1600300ce66949edbdd66ecb17aa9d8e0473f86991414d33ffe81b19681d02",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/01_timeline_tracing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "torch_tb_profiler_trace_view.png",
+    "title": "trace 上的 dataloader 瓶颈",
+    "source": "https://github.com/pytorch/tutorials/blob/45a5b17e0a15adc79068116e1720449608587c6f/intermediate_source/tensorboard_profiler_tutorial.py",
+    "image_url": "https://raw.githubusercontent.com/pytorch/tutorials/45a5b17e0a15adc79068116e1720449608587c6f/_static/img/profiler_trace_view1.png",
+    "retrieved": null,
+    "sha256": "e31524ffe85a83f6532c80f4044d078a26405459097c3d2720f20973a1df61c4",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_image_comparison",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/profiling/01_timeline_tracing.md"
+    ],
+    "notes": "官方教程已从当前网站移除；来源固定到删除前的官方仓库版本。 原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

@@ -242,3 +242,10 @@ Kimi：   from scratch 训练 hybrid
 ---
 
 回到 [Attention 机制](./README.md) 看完整的地图与账本表。kernel 侧的实现在 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md)（稀疏）与 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md)（线性，逐行对齐 [[fla:]]）。
+
+
+## 8. 从交替层到共享历史
+
+近期 hybrid 的变化不只在层比例：Qwen3.8-Flash-Next 将 GDN/full 的全局分支替换为 QSA；DeepSeek-V4.1 把 encoder 与 decoder 分段，并用 CSA2 共享不同层的 KV 和索引。前者改变被访问的 token 集合，后者还改变历史表示由哪一层产生。模型与版本的核验入口见[模型速览](../../frontier_open_models.md)。
+
+[下一篇：跨层 KV 共享与 YOCO](./12_cross_layer_kv_yoco.md)会从 cache 的层数因子推导这种结构，并区分省存储、减少 prefill 计算与减少 decode 读取三种不同收益。

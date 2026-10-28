@@ -379,3 +379,7 @@ Prefix cache 解决的是跨请求复用同一段 KV 这个问题；但对于 P/
 - Cheng et al., *LMCache: An Efficient KV Cache Layer for Enterprise-Scale LLM Inference*（[arXiv:2510.09665](https://arxiv.org/abs/2510.09665)）。
 - Liu et al., *CacheGen: KV Cache Compression and Streaming for Fast LLM Serving*（[arXiv:2310.07240](https://arxiv.org/abs/2310.07240)）。
 - vLLM prefix caching design：[[vllm:docs/design/prefix_caching.md]]；SGLang HiCache：[[sglang:docs/advanced_features/hicache_design.md]]。
+
+## DeepInfer 的状态分层
+
+DeepSeek 的生产设计把可分页的 block KV 与固定窗口的 SWA state 分开管理，并通过独立共享存储减少 prefix affinity 对路由的限制。对于未保存的 decoder SWA，bounded replay 可以减少重建工作，但引入近似；不能把这种状态恢复与精确 prefix reuse 混为一谈。详见 [DeepInfer 的推理策略](./09_deepinfer.md)。

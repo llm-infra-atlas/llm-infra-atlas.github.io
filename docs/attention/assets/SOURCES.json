@@ -1,0 +1,44 @@
+[
+  {
+    "file": "arxiv/1706.03762_mha.png",
+    "title": "Multi-Head Attention：Q、K、V 各自经 Linear 投影成 h 份，并行做 h 次 scaled dot-product attention，Concat 后再过一次 Linear",
+    "source": "https://arxiv.org/abs/1706.03762",
+    "image_url": "https://arxiv.org/html/1706.03762v7/Figures/ModalNet-20.png",
+    "retrieved": null,
+    "sha256": "ba8a3ede5d40183ce8c18de249be60bec692646d53db108a3df51797a3c8634a",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1706.03762",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/00_attention_basics.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/1706.03762_sdpa.png",
+    "title": "Scaled Dot-Product Attention：MatMul、Scale、可选的 Mask、SoftMax、再与 V 做 MatMul",
+    "source": "https://arxiv.org/abs/1706.03762",
+    "image_url": "https://arxiv.org/html/1706.03762v7/Figures/ModalNet-19.png",
+    "retrieved": null,
+    "sha256": "6d40a44e2ec3f0cdab207c768a9085b6b908bbefa82c5af6613dc8233bee6a42",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1706.03762",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/00_attention_basics.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

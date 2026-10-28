@@ -11,31 +11,35 @@ Ring Attention 是 CP 的算法核心，它回答的是「序列被切开后如�
 
 ## 1. online softmax 回顾
 
-标准 attention 的计算是 $O = \mathrm{softmax}(QK^{\top} / \sqrt{d})\, V$。softmax 需要全局的 max 和 sum(exp)，看起来必须先拿到完整的 $QK^{\top}$。但 FlashAttention 证明这一步可以流式完成：把 KV 切成块 $K^{(1)}, V^{(1)}, K^{(2)}, V^{(2)}, \dots$，维护三个 running 状态 $(m, l, O)$：
+标准 attention 的计算是 $O = \mathrm{softmax}(QK^{\top} / \sqrt{d})\, V$。softmax 需要全局的 max 和 sum(exp)，看起来必须先拿到完整的 $QK^{\top}$。但 FlashAttention 证明这一步可以流式完成：把 KV 切成块 $K^{(1)}, V^{(1)}, K^{(2)}, V^{(2)}, \dots$，维护三个 running 状态 $(m, l, u)$：
 
-```
-m  = 当前见过的最大 logit（running max）
-l  = 当前的 exp 之和（running sum，已按 m 缩放）
-O  = 当前的加权 V 累加（已按 m, l 缩放）
-```
+对已经访问的 KV 集合 $\mathcal J$，每行维护
+
+$$
+m_i=\max_{j\in\mathcal J}s_{ij},\qquad
+\ell_i=\sum_{j\in\mathcal J}e^{s_{ij}-m_i},\qquad
+u_i=\sum_{j\in\mathcal J}e^{s_{ij}-m_i}v_j,\qquad O_i=u_i/\ell_i.
+$$
+
+本篇用 $u_i$ 表示尚未归一化的分子，$O_i$ 表示最终输出；这与 FlashAttention 章节的约定一致。
 
 每来一个新块 $K^{(j)}, V^{(j)}$，按如下方式更新：
 
 $$
 \begin{aligned}
-S_j   &= Q K^{(j)\top} / \sqrt{d} \\
+S_j   &= Q K^{(j)\top} / \sqrt{d}+M_j \\
 m_{\text{new}} &= \max(m,\ \mathrm{rowmax}(S_j)) \\
 p_j   &= \exp(S_j - m_{\text{new}}) \\
 \alpha &= \exp(m - m_{\text{new}}) \\
 l     &= \alpha\, l + \mathrm{rowsum}(p_j) \\
-O     &= \alpha\, O + p_j V^{(j)} \\
+u     &= \alpha\, u + p_j V^{(j)} \\
 m     &= m_{\text{new}}
 \end{aligned}
 $$
 
-这里 $S_j$ 的 shape 是 $[s_q, \text{block}]$；$p_j$ 重新以 $m_{\text{new}}$ 为基准，$\alpha$ 是旧状态的缩放因子，用来修正之前用旧 max 算的部分。
+初始状态为 $m=-\infty,l=0,u=0$。全被 mask 的 tile 应跳过，避免负无穷相减。这里 $S_j$ 的 shape 是 $[s_q, \text{block}]$；$p_j$ 重新以 $m_{\text{new}}$ 为基准，$\alpha$ 是旧状态的缩放因子，用来修正之前用旧 max 算的部分。
 
-所有块处理完后，$O = O / l$ 即为正确结果。这个累加过程有两个关键性质：对块的处理顺序不敏感（只要每块都被处理一次），且每一步只需要当前块的 $K^{(j)}, V^{(j)}$。正是这两点使「KV 分散在不同卡上、轮流到达」成为可能。
+所有块处理完后，$O = u / l$ 即为正确结果。这个累加过程有两个关键性质：对块的处理顺序不敏感（只要每块都被处理一次），且每一步只需要当前块的 $K^{(j)}, V^{(j)}$。正是这两点使「KV 分散在不同卡上、轮流到达」成为可能。
 
 ## 2. 跨卡环形轮转
 
@@ -58,14 +62,14 @@ flowchart LR
 
 ```
 kv = (K_i, V_i)                       # 起始持有自己的 KV
-m, l, O = init                        # online softmax 状态
+m, l, u = init                        # online softmax 状态
 for step in range(N):                 # 转一圈
     # ① 把当前 kv 发给下一个 rank，同时从上一个 rank 收下一块（async P2P）
     next_kv = isend/irecv(kv) along ring        # 与 ② overlap
     # ② 用当前 kv 更新 online softmax（这块 KV 来自 rank (i-step) % N）
-    O, m, l = flash_update(Q_i, kv.K, kv.V, O, m, l, causal_mask_for(i, src_rank))
+    u, m, l = flash_update(Q_i, kv.K, kv.V, u, m, l, causal_mask_for(i, src_rank))
     kv = wait(next_kv)
-O = O / l
+O = u / l
 ```
 
 转 $N$ 步后，rank $i$ 的 $Q_i$ 已经与所有 rank 的 KV 各计算过一次，得到完整的 attention 输出。这一设计的核心优势是通信与计算的 overlap：第 `step` 步在计算 attention 时，下一块 KV 正在 P2P 传输途中。这是 ring 相对于 all-gather 的根本优势，`cp_comm_type="p2p"` 的注释（[[megatron-lm:megatron/core/transformer/transformer_config.py#L897]]）也明确强调了 "P2P is async and can be overlapped"。

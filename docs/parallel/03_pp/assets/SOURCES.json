@@ -1,0 +1,228 @@
+[
+  {
+    "file": "arxiv/1811.06965_naive_parallelism.png",
+    "title": "Naive model parallelism: only one accelerator active at a time",
+    "source": "https://arxiv.org/abs/1811.06965",
+    "image_url": "https://arxiv.org/html/1811.06965v5/NaiveParallelism.png",
+    "retrieved": null,
+    "sha256": "5a0d0360a07b9fa2ecf7827e2473e336d889be8c40775055bf550f79a9ec3ffe",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1811.06965",
+    "figure_from_caption": "2b",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/03_pp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/1811.06965_pipeline_parallelism.png",
+    "title": "GPipe pipeline with fill/drain bubble",
+    "source": "https://arxiv.org/abs/1811.06965",
+    "image_url": "https://arxiv.org/html/1811.06965v5/PipelineParallelism.png",
+    "retrieved": null,
+    "sha256": "cff7ce9dd6ea02903003a8c9033ff16711221a17688d7795aed9cd71e2580dbf",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "1811.06965",
+    "figure_from_caption": "2c",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/03_pp/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2104.04473_gpipe.png",
+    "title": "GPipe schedule with pipeline flush bubble (Megatron)",
+    "source": "https://arxiv.org/abs/2104.04473",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "0aae48cb9fd3887a3b90debf8c5dc883a6de92404b61d9e0c21701abc6f240b1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2104.04473",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/parallel/03_pp/01_gpipe_1f1b.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2104.04473_interleaved.png",
+    "title": "Default vs interleaved 1F1B schedule (bubble shrinks by 1/v)",
+    "source": "https://arxiv.org/abs/2104.04473",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "9048f90c5f7c2b5a2032dfac0a5af922d9c9713c3f24f40e460397cb36909257",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2104.04473",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/parallel/03_pp/01_gpipe_1f1b.md",
+      "docs/parallel/03_pp/02_interleaved_zerobubble_dualpipe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2205.05198_pipeline_activations.png",
+    "title": "Activation memory per pipeline stage, decreasing from first to last",
+    "source": "https://arxiv.org/abs/2205.05198",
+    "image_url": "https://arxiv.org/html/2205.05198v1/figures/pipeline_activations_dealloc.png",
+    "retrieved": null,
+    "sha256": "09427bd12b5bd2454c525c08d26220ec5470e22f256c9fcab75652adb63651e6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2205.05198",
+    "figure_from_caption": "9",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/03_pp/03_overlap_and_memory.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2401.10241_zb_hand_designed.png",
+    "title": "ZB-H1 and ZB-H2 handcrafted schedules filling bubbles with W passes",
+    "source": "https://arxiv.org/abs/2401.10241",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "373d7aed3506fa88ffd24ab45d9e639bf3eac219ca8697f71ba7f81087c6706e",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10241",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/parallel/03_pp/02_interleaved_zerobubble_dualpipe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.10241_zb_operator_graph.png",
+    "title": "Computation graph of MLP: forward, B (activation grad), W (weight grad)",
+    "source": "https://arxiv.org/abs/2401.10241",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "5b743c4523f44778b534a700307c09fd58b8ac2c0b5bf0c789c50e1f22e5556f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.10241",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/parallel/03_pp/02_interleaved_zerobubble_dualpipe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.19437_dualpipe_overlap.png",
+    "title": "DualPipe overlapping of computation and communication for a fwd/bwd chunk pair",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "06513197babc77ad11bb68b6822e4b2ef642b29bdc138de40970341d8db4e560",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/parallel/03_pp/02_interleaved_zerobubble_dualpipe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.19437_dualpipe_schedule.png",
+    "title": "DualPipe bidirectional pipeline schedule for 8 PP ranks",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3748018c596136280f596001ef69d2614fbdf44fd5a1a07372712071ca0b6c90",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/parallel/03_pp/02_interleaved_zerobubble_dualpipe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "moe_a2a_conventional_1f1b.png",
+    "title": "Conventional 1F1B adapted for EP A2A overlap between adjacent microbatches",
+    "source": "https://developer.nvidia.cn/blog/1f1b-moe-a2a-computing-overlap",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "463537b8e131765b163cc8b4d9fb2e603fffabf814ae37fd63df00d26a5ca473",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/parallel/03_pp/03_overlap_and_memory.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "moe_a2a_dualpipe_vs_1f1b_bubble.png",
+    "title": "Bubble overhead ratio between DualPipe and 1F1B overlap across VPP",
+    "source": "https://developer.nvidia.cn/blog/1f1b-moe-a2a-computing-overlap",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "65b1640fadd09108e20aabfc7aa082f9ce8b263a2f557e4b24b0a940eb66f88a",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/parallel/03_pp/03_overlap_and_memory.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "moe_a2a_dw_split_overlap.png",
+    "title": "Compute/communication overlap before vs after splitting dw",
+    "source": "https://developer.nvidia.cn/blog/1f1b-moe-a2a-computing-overlap",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "0f37af3d4331461b9eaac1be2d9756bf6fecb2ff50a0bc72927ceb161f6eb88c",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/parallel/03_pp/03_overlap_and_memory.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "moe_a2a_interleaved_1f1b.png",
+    "title": "Interleaved 1F1B achieving EP A2A / compute overlap with flat peak memory",
+    "source": "https://developer.nvidia.cn/blog/1f1b-moe-a2a-computing-overlap",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "718b14214f5fd2bf94cd03e57a9c181c79b4cb07d9b86c5befc4566b43774bd5",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "references": [
+      "docs/parallel/03_pp/03_overlap_and_memory.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

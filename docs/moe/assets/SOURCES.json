@@ -1,0 +1,211 @@
+[
+  {
+    "file": "arxiv/2101.03961_switch_arch.png",
+    "title": "Switch Transformer: router sends each token to expert FFNs",
+    "source": "https://arxiv.org/abs/2101.03961",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "7db71ad0340a9a002c8bb0110a5ebf8397832919d83a1b1e7a9892638f8e5d52",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2101.03961",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/moe/01_basics_and_components.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2401.04088_smoe.png",
+    "title": "Mixtral MoE layer: router selects 2 of 8 experts and combines with gating weights",
+    "source": "https://arxiv.org/abs/2401.04088",
+    "image_url": "https://arxiv.org/html/2401.04088v1/images/smoe.png",
+    "retrieved": null,
+    "sha256": "118cf963b060a4d41d36535f047e585aa3b043ea548a25bb54d55df9919f4f53",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.04088",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.00032
+    },
+    "references": [
+      "docs/moe/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2401.06066_deepseekmoe.png",
+    "title": "DeepSeekMoE: (a) conventional top-2 (b) fine-grained segmentation (c) + shared expert",
+    "source": "https://arxiv.org/abs/2401.06066",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "acc466066f025b7f1a86bcf5bb6c140f01a1e4f373c2accdd32d421bbb15e956",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2401.06066",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/moe/02_fine_grained.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2408.15664_aux_dilemma.png",
+    "title": "Auxiliary-loss dilemma: small α collapses, large α hurts perplexity",
+    "source": "https://arxiv.org/abs/2408.15664",
+    "image_url": "https://arxiv.org/html/2408.15664v1/figs/balance_mv_perplexity_new_new.png",
+    "retrieved": null,
+    "sha256": "c67886a3e34dc0816c473ea158ade48bf82aad5cb54a41bdbdfc38bfa19cbe38",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2408.15664",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000392
+    },
+    "references": [
+      "docs/moe/04_load_balancing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2408.15664_auxfree.png",
+    "title": "Loss-Free Balancing: add expert bias, then update bias from load vs mean",
+    "source": "https://arxiv.org/abs/2408.15664",
+    "image_url": "https://arxiv.org/html/2408.15664v1/figs/figure_815.png",
+    "retrieved": null,
+    "sha256": "1c8d6f2d760c0908926986fc35c7894ace1e7400c19e0d3db5a23802ac699106",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2408.15664",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000302
+    },
+    "references": [
+      "docs/moe/04_load_balancing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2412.19437_basic_arch.png",
+    "title": "DeepSeek-V3 basic architecture: MLA + DeepSeekMoE",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": "https://arxiv.org/html/2412.19437v2/basic_arch.png",
+    "retrieved": null,
+    "sha256": "b28eb03ebdcfaa37139cc5ab9162369f61a83eda263173458249465770bfefb3",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001692
+    },
+    "references": [
+      "docs/moe/01_basics_and_components.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2601.18089_latentmoe_vs_standard.png",
+    "title": "Standard MoE vs LatentMoE: down-project before dispatch, up-project after combine",
+    "source": "https://arxiv.org/abs/2601.18089",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "e50278bdffaece59e4be2f84c801149c59c06cc35a59dafa62503fae0e151351",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2601.18089",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/moe/03_latentmoe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.24653_arch.png",
+    "title": "Kimi K3 architecture: KDA / Gated MLA + Stable LatentMoE, shared vs routed path",
+    "source": "https://arxiv.org/abs/2607.24653",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "b284dada956303ab0721a3013649abe3ca5678dd38b656968fc2840e783ce2e1",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.24653",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/moe/03_latentmoe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.24653_qb.png",
+    "title": "Quantile Balancing: imbalanced top-k, per-expert quantile of margins, balanced assignment",
+    "source": "https://arxiv.org/abs/2607.24653",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "89734c616c2faf191da30e85e3f97ef866ae61c92276acef9b8febdab889e544",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.24653",
+    "figure_from_caption": "5",
+    "references": [
+      "docs/moe/04_load_balancing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2607.24653_situglu.png",
+    "title": "GLU vs SwiGLU vs SiTU-GLU: SiTU-GLU tracks SwiGLU near 0 and saturates at 100",
+    "source": "https://arxiv.org/abs/2607.24653",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "5f33e0064baad2b381891f7f63b0c07f204e5c50be0a6c4882f068cb4cd6690d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2607.24653",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/moe/03_latentmoe.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "deepep_low_latency.png",
+    "title": "low-latency 的 hook-based double-batch overlap",
+    "source": "https://github.com/deepseek-ai/DeepEP/blob/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/docs/legacy.md",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/DeepEP/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/figures/low-latency.png",
+    "retrieved": null,
+    "sha256": "8694113abc564171272e535f601bb8a329d04a0093febcfdd6eea0b422fad9fe",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/moe/06_deepep.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

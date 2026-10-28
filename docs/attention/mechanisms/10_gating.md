@@ -10,20 +10,15 @@
 
 ## 1. 三种门控
 
-```
-                        作用对象           作用维度      出现在哪
-① decay / forget gate   状态转移矩阵 A_t    【时间】维    只在 linear attention
-   α_t                  S_t = A_t S_{t-1}+…              RetNet→Mamba-2→GLA→GDN→KDA→RWKV-7
+三种 gate 作用于不同的计算位置：
 
-② write gate / 学习率   新写入的量          【时间】维    只在 delta rule 族
-   β_t                  + β_t k_t v_tᵀ                   DeltaNet→GDN→KDA；RWKV-7 的 a_t（通道级 ICLR）
+| 类型 | 数学位置 | 作用 |
+|---|---|---|
+| Decay / forget | $S_t=A_tS_{t-1}+\cdots$ | 控制历史状态如何传到当前时刻 |
+| Write gate / 学习率 | $\beta_tk_tv_t^\top$，或对预测残差写入 | 控制新信息的写入强度 |
+| Output gate | $\sigma(W_gx_t)\odot o_t$ | 控制读取结果的各通道；linear/softmax 都可用 |
 
-③ output gate           层的输出            【通道】维    linear 与 softmax attention 【通用】
-   σ(W_g x_t) ⊙ o_t                                      RetNet→GLA→GDN→KDA / Qwen3-Next→Kimi K3
-
-（④ NSA 的分支门 g^cmp/g^slc/g^win 是 output gate 的一个变种：
-   对同一层的三路输出各给一个独立 sigmoid，见 [04] §5）
-```
+NSA 的 compression、selection、window 分支各自使用独立 sigmoid gate，是对多个输出分支的扩展，见 [可训练稀疏](./04_sparse_trainable.md)。
 
 为什么必须区分：①作用于时间维，控制「记住多久」；③作用于通道维，控制「读出哪些通道」。它们的梯度路径、参数量、失效模式全都不同。①只在有 recurrent state 的机制里有意义；③在任何 attention 里都有意义。
 
@@ -43,7 +38,7 @@
 
 写入门 $\beta_t$ 的粒度演进短一些：DeltaNet/GDN/KDA 都是标量 $\sigma(W_\beta x_t)$；RWKV-7 是通道向量 $a_t$（"in-context learning rate"）——从测试时回归的视角看，这是「逐通道的学习率」，对应 Adam 式的 per-parameter 学习率。
 
-`fla` 里两个门的参数化都能逐行对上：`A_log [HV]` + `dt_bias [HV*K]`（KDA，[[fla:fla/layers/kda.py#L174-L185]]）、`A_log [HV]` + `dt_bias [HV]`（GDN，[[fla:fla/layers/gated_deltanet.py#L151-L168]]）。注意 KDA 的 `dt_bias` 多了 `K` 维——就是通道级的那一维。
+`fla` 里两个门的参数化都能逐行对上：`A_log [HV]` + `dt_bias [HV*K]`（KDA，[[fla:fla/layers/kda.py#L174-L185]]）、`A_log [HV]` + `dt_bias [HV]`（GDN，[[fla:fla/layers/gated_deltanet.py#L154-L165]]）。注意 KDA 的 `dt_bias` 多了 `K` 维——就是通道级的那一维。
 
 ## 3. output gate
 
@@ -183,7 +178,7 @@ gate   = Sigmoid(W_g @ x)                        # Kimi Linear 低秩；Kimi K3 
 y      = W_o @ (gate * o_norm)
 ```
 
-这就是 `fla` 里的 `FusedRMSNormGated`，KDA 层的连线在 [[fla:fla/layers/kda.py#L307]]（`activation="sigmoid"`），GDN 在 [[fla:fla/layers/gated_deltanet.py#L355-L359]]（`use_gate` 为真时用 `FusedRMSNormGated`，否则退化成普通 `RMSNorm`）。
+这就是 `fla` 里的 `FusedRMSNormGated`，KDA 层的连线在 [[fla:fla/layers/kda.py#L311]]（`activation="sigmoid"`），GDN 在 [[fla:fla/layers/gated_deltanet.py#L348-L352]]（`use_gate` 为真时用 `FusedRMSNormGated`，否则退化成普通 `RMSNorm`）。GDN 的 output gate 由 `output_gate_activation` 配置，默认 `swish`，也支持其别名 `silu` 和 `sigmoid`，因此不能把 KDA 的 sigmoid 当成两层共同的默认值（[[fla:fla/layers/gated_deltanet.py#L194-L199]]）。
 
 ⚠️ Kimi K3 的 Gated MLA 版本没有 RMSNorm：
 

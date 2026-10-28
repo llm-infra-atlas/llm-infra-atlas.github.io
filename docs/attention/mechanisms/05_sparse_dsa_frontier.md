@@ -186,6 +186,16 @@ router 能否收到 LM loss 的梯度？
 
 kernel 已经开源：indexer logit kernel（含 paged 版本）在 DeepGEMM 的 PR #200 里；sparse attention kernel 在 FlashMLA 的 PR #98 里，并提供了 CUDA 实现。详见 [05 · Flash Sparse Attention](../fa/05_flash_sparse_attention.md) §4。
 
+## 近期扩展：CSA2 与 QSA
+
+截至 2026-10-28，稀疏 attention 的优化已经进一步进入跨层调度。两个例子分别强调复用与选择粒度。
+
+**CSA2** 在 [DeepSeek-V4.1](https://arxiv.org/abs/2609.19969) 中把层分成三种静态模式：Full 产生自己的 main KV、indexer K 与选择结果；Reindex 复用 KV 但重新查询/选择；Reuse 进一步复用 top-k 索引。KV 共享减少存储，index 共享减少选择计算，两种收益应分别记账。decoder 的 hierarchical indexer 还把后续选择限制在前面 Full 层构造的候选池中；第一轮的全局选择并没有因此消失。
+
+**QSA** 在 [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) 中与 Gated DeltaNet 按 1:3 交替。其 micro-block 含 4 个 token，选择预算为 512 blocks / 2048 tokens；indexer 为 4 个 query heads 与 1 个共享 key head。它用较细的连续块折中 token 级选择与访存规整性。GDN 层的常数状态和 QSA 层仍需保存的历史 KV 要分别统计。
+
+这两条路线也改变了 CP 的通信设计：共享索引可以复用跨 rank 的请求列表，分层候选集可以减少全局选取后的远程访问，但都需要处理被多个 query 引用的 KV 和 backward 梯度汇聚。见 [Sparse attention CP](../../parallel/04_cp/05_sparse_attention_cp.md)。
+
 ## 6. DeepSeek-V4：先压缩，再选择
 
 DeepSeek-V4（[arXiv:2606.19348](https://arxiv.org/abs/2606.19348)）一共发布了两个模型：V4-Pro **1.6T total / 49B active**、V4-Flash **284B / 13B**，两者都支持 **1M** 上下文。这一代里**原来的 MLA 被替换成了两种 attention 逐层交替的结构**。

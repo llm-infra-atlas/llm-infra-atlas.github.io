@@ -1,0 +1,390 @@
+[
+  {
+    "file": "arxiv/2004.05150_longformer_patterns.png",
+    "title": "Longformer, Figure 2(d)",
+    "source": "https://arxiv.org/html/2004.05150v2",
+    "image_url": "https://arxiv.org/html/2004.05150v2/fig-attn-combined.png",
+    "retrieved": "2026-10-28",
+    "sha256": "9938835ba8e8d259cc9585ff27048c2e39a6b0fa88bfb58fe3745d2c43fa0428",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "arxiv_id": "2004.05150",
+    "figure_from_caption": "2(d)",
+    "references": [
+      "docs/attention/mechanisms/03_sparse_static.md"
+    ]
+  },
+  {
+    "file": "arxiv/2305.13245_gqa_arch.png",
+    "title": "GQA：MHA（每个 query head 一份 KV）/ GQA（每组共享一份）/ MQA（全部共享一份）",
+    "source": "https://arxiv.org/abs/2305.13245",
+    "image_url": "https://arxiv.org/html/2305.13245v3/images/gmq_architecture.png",
+    "retrieved": null,
+    "sha256": "02c3d00ec9f339211daae34392aeed850b013457b64f8088f1c5c054a5e94ab6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2305.13245",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/01_basics_head_sharing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2309.17453_attention_sink.png",
+    "title": "Llama-2-7B 各层的平均 attention logits：第 0–1 层是局部的，**所有更深的层都在 token 0 上出现尖峰**",
+    "source": "https://arxiv.org/abs/2309.17453",
+    "image_url": "https://arxiv.org/html/2309.17453v4/attention_weights.png",
+    "retrieved": null,
+    "sha256": "e69ebd4313fb0f20a363cbab496f5484cd9bbf5aa0e393880796ad2ae9c64308",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2309.17453",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/03_sparse_static.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2309.17453_streamingllm.png",
+    "title": "四种方案对比：(a) dense（O(N²)、超出训练长度就崩）(b) window（PPL 5158，崩）(c) sliding with re-computation（PPL 5.43 但 O(N·W²)）(d) StreamingLLM = 4 个 sink + rolling window（PPL 5.40，O(N·W)）",
+    "source": "https://arxiv.org/abs/2309.17453",
+    "image_url": "https://arxiv.org/html/2309.17453v4/scheme.png",
+    "retrieved": null,
+    "sha256": "6a035c24dbcc356d7cf03988bd1457f6095f81cb6ba25029511516466245cd4d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2309.17453",
+    "figure_from_caption": "1",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/03_sparse_static.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2310.06825_sliding_window.png",
+    "title": "Mistral sliding window 的连接与跨层感受野",
+    "source": "https://arxiv.org/abs/2310.06825",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "fb3da27f1624d5c56617e9e2f60438b0348ffa4025cce7700e78323430c7dac2",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2310.06825",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/attention/mechanisms/03_sparse_static.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2312.06635_gla_chunkwise.png",
+    "title": "Gated Linear Attention, Figure 1",
+    "source": "https://arxiv.org/html/2312.06635v3",
+    "image_url": "https://arxiv.org/html/2312.06635v3/gla.png",
+    "retrieved": "2026-10-28",
+    "sha256": "c0352e3b5b1a3fb266bdfc1a4225f9db63dc8279887423252c8428f1bf799ddb",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "arxiv_id": "2312.06635",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/attention/mechanisms/06_linear_foundation.md"
+    ]
+  },
+  {
+    "file": "arxiv/2405.04434_mla_vs_gqa.png",
+    "title": "MHA / GQA / MQA / MLA 四联对比：MLA 只缓存一个压缩 latent `c^KV`，K/V 在推理时由它上投影还原（或被吸收掉）",
+    "source": "https://arxiv.org/abs/2405.04434",
+    "image_url": "https://arxiv.org/html/2405.04434v5/dsattn.png",
+    "retrieved": null,
+    "sha256": "4595663dfc123e89769ebefd6f59fdf38f10d7d7d980d29c35af600e3dc03f9b",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.04434",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/01_basics_head_sharing.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2405.05254_yoco_arch.png",
+    "title": "YOCO, Figure 2",
+    "source": "https://arxiv.org/html/2405.05254v1",
+    "image_url": "https://arxiv.org/html/2405.05254v1/figure/arch.png",
+    "retrieved": "2026-10-28",
+    "sha256": "b929ef1075c737e87e356cdd41300a5df76f85f1bdbabb70b1ffbcea392055d9",
+    "modification": "none; original image, display sizing only",
+    "recorded": "2026-10-28",
+    "provenance": "original_download_record",
+    "arxiv_id": "2405.05254",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/attention/mechanisms/12_cross_layer_kv_yoco.md"
+    ]
+  },
+  {
+    "file": "arxiv/2405.21060_semiseparable.png",
+    "title": "左：SSM 作为矩阵变换 `M ∈ ℝ^{T×T}` 作用于序列维（head 内各 channel 共享同一矩阵）。右：该矩阵是半可分离的——对角线上及下方的任意子矩阵（蓝色）秩至多 `N`（= SSM 状态维）",
+    "source": "https://arxiv.org/abs/2405.21060",
+    "image_url": "https://arxiv.org/html/2405.21060v1/semiseparable.png",
+    "retrieved": null,
+    "sha256": "9e659612f49a4c1cdb95102c02c41948fcc47557f8b586983d9917aebcba5dbd",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.21060",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/07_linear_decay_gating.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2405.21060_sma.png",
+    "title": "Structured Masked Attention：构造 `M = QKᵀ ∘ L`（`L` 为任意结构化矩阵），所有实例都有由不同缩并顺序诱导的次二次对偶形式",
+    "source": "https://arxiv.org/abs/2405.21060",
+    "image_url": "https://arxiv.org/html/2405.21060v1/sma.png",
+    "retrieved": null,
+    "sha256": "1bedc5e5886fa5e5e1df3711b2e1011048517f0f84ff43bff242b446b95ba6fd",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.21060",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/07_linear_decay_gating.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2405.21060_ssd_algorithm.png",
+    "title": "SSD 算法：把 `M` 切成子块网格——对角块用二次 dual 形式（intra-chunk），非对角块由半可分离性天然低秩（inter-chunk，通过 SSM 隐状态分解）",
+    "source": "https://arxiv.org/abs/2405.21060",
+    "image_url": "https://arxiv.org/html/2405.21060v1/ssd_algorithm.png",
+    "retrieved": null,
+    "sha256": "941aea9b5abbbf96b7af7274d18f2bf1aac4eb97f6aaae304ebe8c48deff18b3",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2405.21060",
+    "figure_from_caption": "5",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/07_linear_decay_gating.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.11089_nsa_arch.png",
+    "title": "NSA 架构：左为三个并行分支（compression / selection / sliding），右为三者各自的 attention mask（绿色=计算，白色=跳过）",
+    "source": "https://arxiv.org/abs/2502.11089",
+    "image_url": "https://arxiv.org/html/2502.11089v2/fig2.png",
+    "retrieved": null,
+    "sha256": "6edf8d3a3b790180e0fb32383a2a5f29f2c391cb796b188e9ea711fe992e2970",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.11089",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.009846
+    },
+    "references": [
+      "docs/attention/mechanisms/04_sparse_trainable.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.11089_nsa_blockwise.png",
+    "title": "NSA 自家 27B dense 模型的 attention map：重要性明显呈块状聚集",
+    "source": "https://arxiv.org/abs/2502.11089",
+    "image_url": "https://arxiv.org/html/2502.11089v2/visual.png",
+    "retrieved": null,
+    "sha256": "3388dc4f88133b48bea3c489b30f2165a3f97b51c4e44538d5aeec840207f05f",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.11089",
+    "figure_from_caption": "8",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.002576
+    },
+    "references": [
+      "docs/attention/mechanisms/04_sparse_trainable.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.11089_nsa_kernel.png",
+    "title": "NSA kernel：Grid Loop 按 GQA 组遍历 query，Inner Loop 顺序走过 `I_t` 里的稀疏 KV 块。绿色在 SRAM，蓝色在 HBM",
+    "source": "https://arxiv.org/abs/2502.11089",
+    "image_url": "https://arxiv.org/html/2502.11089v2/fig3.png",
+    "retrieved": null,
+    "sha256": "cbf8d232d23f50c1d0c35550c47f5c74eb546ec3ae508bd68af735312da6cd35",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.11089",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.004273
+    },
+    "references": [
+      "docs/attention/mechanisms/04_sparse_trainable.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.13189_moba_example.png",
+    "title": "MoBA 运行示例：两个 query 各自经 Router 选出 top-2 个 KV block，然后只在选中的块上算 attention",
+    "source": "https://arxiv.org/abs/2502.13189",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "eb801cbdb201bd15c7fc59483fd14655e2e0a3a1da1d421f5c630b4c19189ff7",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.13189",
+    "figure_from_caption": "1a",
+    "references": [
+      "docs/attention/mechanisms/04_sparse_trainable.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2503.14456_rwkv7_state.png",
+    "title": "RWKV-7 的状态数值可视化：状态范围保持稳定，而 RWKV-6 会累积到数千",
+    "source": "https://arxiv.org/abs/2503.14456",
+    "image_url": "https://arxiv.org/html/2503.14456v2/v7_visual.png",
+    "retrieved": null,
+    "sha256": "5f5667da7305111cd73ce8e01dab8053e71d745f2c85d48904903c87c339dde6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2503.14456",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/mechanisms/08_linear_delta_rule.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2509.24663_nsa_vs_infllmv2.png",
+    "title": "上：NSA 三分支 + 三套 K/V + Gate（橙色火焰=额外参数）。下：InfLLM-V2 —— 零额外参数，复用 dense attention 的 K/V，并按 seqlen 在 dense / sparse 之间切换",
+    "source": "https://arxiv.org/abs/2509.24663",
+    "image_url": "https://arxiv.org/html/2509.24663v1/framework.png",
+    "retrieved": null,
+    "sha256": "196ab21e5aeb9d2b35272e3232e1b57e04ddb8f9c25d2d142c170eed0ba461e4",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2509.24663",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.006624
+    },
+    "references": [
+      "docs/attention/mechanisms/04_sparse_trainable.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2512.02556_dsa_arch.png",
+    "title": "DeepSeek-V3.2 的 attention 结构：绿色部分是新增的 lightning indexer + Top-k Selector，核心 attention 是 MQA-mode 的 MLA",
+    "source": "https://arxiv.org/abs/2512.02556",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3f1506aa1af848d0fcbceab7b1d2f381f8e643a8943c93a92b4c7399f02c94b6",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2512.02556",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/attention/mechanisms/05_sparse_dsa_frontier.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2606.19348_csa_arch.png",
+    "title": "CSA：Token-Level Compressor 先把 KV 序列压缩，Lightning Indexer 在【压缩后的】序列上打分并 top-k，再加一路 Sliding Window KV Entries，最后送进 Shared Key-Value MQA",
+    "source": "https://arxiv.org/abs/2606.19348",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "4898f97e02204f001bd360b63bada1042efd237cb62a906891d096a383816d04",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2606.19348",
+    "figure_from_caption": "3",
+    "references": [
+      "docs/attention/mechanisms/05_sparse_dsa_frontier.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2606.19348_hca_arch.png",
+    "title": "HCA：同样的 Token-Level Compressor 但压缩率 m' 大得多、不重叠，并且【没有 Top-k Selector】——所有 query 稠密地看全部压缩 entry",
+    "source": "https://arxiv.org/abs/2606.19348",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "90ccbfa84c236dbe83d167cc78c52c2420f7b6fc10c87b7b9824ae7988ffd73d",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2606.19348",
+    "figure_from_caption": "4",
+    "references": [
+      "docs/attention/mechanisms/05_sparse_dsa_frontier.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]

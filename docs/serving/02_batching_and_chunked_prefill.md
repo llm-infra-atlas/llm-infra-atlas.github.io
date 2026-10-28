@@ -293,3 +293,7 @@ prefix hit tokens            GPU util + HBM + collective
 - Agrawal et al., *Sarathi-Serve*, OSDI 2024（[arXiv:2403.02310](https://arxiv.org/abs/2403.02310)）。
 - vLLM scheduler：[[vllm:vllm/v1/core/sched/scheduler.py]]、[[vllm:vllm/config/scheduler.py]]。
 - SGLang scheduler：[[sglang:python/sglang/srt/managers/scheduler.py]]、`schedule_policy.py`。
+
+## DeepInfer 的时间预算与验证预算
+
+固定 token cap 可以限制显存和 batch shape，却未必限制执行时间。DeepSeek 公布的 prefill 调度以 context 长度和 profile 的代价模型决定 chunk 大小；decode 的 DSpark 则根据 confidence 分配每个请求的 verification 长度。两者分别约束 prefill 时间与 speculative verification 的边际收益，推导见 [DeepInfer 的推理策略](./09_deepinfer.md)。

@@ -1,86 +1,225 @@
-# 01 · IO-awareness、online softmax 与 tiling
+# 01 · FlashAttention 的前向与反向
 
-> 上一篇建立了 FlashAttention 的整体图景：attention 是 memory-bound 的，FA 靠 tiling、online softmax、recomputation 三个不变量，把它变成不需要物化 $[N,N]$ 中间量的 fused kernel。本篇把这套算法核心——也就是三代实现共享的不变量——完整讲清楚，共四件事：标准 attention 的 IO 分析（为什么 memory-bound）、online softmax 的数值稳定推导（为什么可以流式分块计算）、tiling 之后的 forward 算法，以及 backward 的 recomputation 与 LSE。读完本篇之后，再看任何一份 FA kernel（Triton/CUDA/CuTeDSL），都只是同一套算法在不同硬件上的映射。
->
-> 论文：FlashAttention [arXiv:2205.14135](https://arxiv.org/abs/2205.14135)。
+FlashAttention 保留标准 softmax attention 的数学定义，改变的是中间结果存在哪里、按什么顺序计算。理解它需要把三个量分开：算术复杂度仍随序列长度平方增长，显存不再保存完整 attention 矩阵，HBM 流量则由分块复用决定。下面从一行 softmax 推到 tiled forward，再从链式法则推导 backward，最后对照算子实现。
 
----
+## 1. 标准 attention 的代价
 
-## 1. 标准 attention 的 IO 分析
-
-单 head，$Q, K, V \in \mathbb{R}^{N \times d}$：
+忽略 batch 与 head，设 $Q,K\in\mathbb R^{N\times d}$、$V\in\mathbb R^{N\times d_v}$，$\tau=1/\sqrt d$。本文始终令 $S$ 表示**已经缩放和加 mask 的 logits**：
 
 $$
-\begin{aligned}
-S &= QK^{\top} / \sqrt{d} && [N, N] \\
-P &= \mathrm{softmax}_{\mathrm{row}}(S) && [N, N] \\
-O &= PV && [N, d]
-\end{aligned}
+S=\tau QK^\top+M,\qquad
+P_{ij}=\frac{e^{S_{ij}}}{\sum_k e^{S_{ik}}},\qquad
+O=PV.
 $$
 
-朴素实现的 HBM 流量（一个 head）：
+$M_{ij}$ 对可见位置为 0，对不可见位置为 $-\infty$。假设每行至少有一个可见 key。先算完整 $S$，再做 softmax，再乘 $V$ 的实现，需要在 HBM 写出、读回两个 $N\times N$ 中间矩阵。
 
-| 步骤 | 读 HBM | 写 HBM |
+| 成本 | 朴素实现 | FlashAttention |
 |---|---|---|
-| $S = QK^{\top}$ | $Q, K$: $2Nd$ | $S$: $N^2$ |
-| $P = \mathrm{softmax}(S)$ | $S$: $N^2$ | $P$: $N^2$ |
-| $O = PV$ | $P, V$: $N^2 + Nd$ | $O$: $Nd$ |
-| 合计 | $\approx 3N^2 + 3Nd$ | $\approx 2N^2 + Nd$ |
+| attention 算术量 | $O(N^2(d+d_v))$ | 同阶；反向另有重算 |
+| 保存完整 S/P | $O(N^2)$ | 不保存 |
+| 输入、输出与每行统计 | $O(N(d+d_v))$ | 同阶 |
+| HBM 访问 | 包含大规模 S/P 往返 | 依赖 tile 与片上容量，通常显著减少 |
 
-当 $N \gg d$（长上下文），HBM 流量约为 $O(N^2)$，由 $S/P$ 这两个 $[N,N]$ 矩阵的读写主导。而计算量是 $O(N^2 d)$ FLOPs，集中在两个 matmul 上，可以被 Tensor Core 吸收。
+softmax 与中间矩阵读写具有较低 arithmetic intensity，是朴素实现的重要瓶颈。但不能把「attention 永远 memory-bound」当成定律：长序列 fused attention、不同 head dimension 和硬件可能进入 compute-bound 区域。FA 正是通过减少数据搬运，把更多时间留给矩阵乘法。
 
-再看 **arithmetic intensity**（FLOPs / byte）：matmul 部分很高，对 compute-bound 友好；但 softmax 是 element-wise 操作，每个 $S$ 元素只做几次 flop，却要在 HBM 上完成一次读和一次写，整体 intensity 因此被压低到带宽受限区。换句话说，GPU 的 Tensor Core 在等 HBM。这就是「attention 慢是 memory-bound 而非 compute-bound」的精确含义。
+![FlashAttention 的存储层次与分块计算](assets/arxiv/2205.14135_flashattn_banner.png)
 
-因此 FA 的目标不是减少 FLOPs（FA 计算的 FLOPs 和标准实现几乎一样，它是 *exact* attention），而是**把 $O(N^2)$ 的 HBM 流量降到 $O(N^2 d / M)$**（$M$ 是 SRAM 大小），做法是通过 tiling 让 $S/P$ 块只出现在 SRAM 里，永不落 HBM。
+图源：[FlashAttention 论文 Fig. 1](https://arxiv.org/abs/2205.14135)。左侧是小而快的片上存储与大而慢的 HBM，右侧是论文的特定实验结果。阅读时重点看 S/P tile 只在片上出现；图中加速比不代表所有 shape 与硬件。
 
-![FlashAttention memory hierarchy, tiling, and speedup](assets/arxiv/2205.14135_flashattn_banner.png)
+### 显存复杂度不等于 IO 复杂度
 
-> 图：FlashAttention 论文的经典示意图。**左**：GPU 存储层次（SRAM ~19 TB/s 但极小、HBM ~1.5 TB/s、DRAM），以及 tiling 的做法 —— 外层在 KV block 上循环、把块载入 SRAM，片上做 online softmax，$S/P$ 从不落 HBM。**右**：相对 PyTorch 标准实现在 GPT-2 attention 上 ~7.6× 的加速。这张图完整呈现了「memory-bound → 用 tiling 砍掉 HBM 往返」的论证链条。（Dao et al. 2022, Fig 1；[arXiv:2205.14135](https://arxiv.org/abs/2205.14135)）
-
-## 2. Online softmax
-
-softmax 对一行 $S$ 的计算是
+令 $d_v=d$，$M_{\mathrm{SRAM}}$ 表示片上可容纳的标量元素数，省略字节宽度。在论文讨论的容量范围内，FA 的 HBM 访问量为
 
 $$
-P_{ij} = \frac{\exp(S_{ij})}{\sum_{j'} \exp(S_{ij'})}
+\Theta\!\left(\frac{N^2d^2}{M_{\mathrm{SRAM}}}\right),
 $$
 
-数值稳定的实现要先扫一遍全行求 $m = \max_{j'} S_{ij'}$，再以 $m$ 为基准求分母 $\sum_{j'} \exp(S_{ij'} - m)$。两遍扫描都依赖完整的一行，这和 tiling 直接冲突：块是逐块到来的，任何时刻手里只有一行的若干列。FA 借用 **online softmax**（Milakov & Gimelshein 2018）解决这个矛盾——不等到全行凑齐，每来一块就把它的贡献累加进 running 状态，所有块处理完时，结果恰好等于对整行做了一次性 softmax。
+并至少需要读写 $\Omega(Nd)$ 的输入输出。它不是普遍的 $O(Nd)$：一个 KV tile 仍可能被不同 query tile 重复加载。线性的是无需保存 $N\times N$ 中间矩阵的**空间占用**，不是在固定 SRAM 下所有输入只读一遍。论文中的 IO 上界与这一单位约定见 [FA §3.2](https://arxiv.org/abs/2205.14135)；进一步的下界分析见 [Saha & Ye](https://arxiv.org/abs/2402.07443)。
 
-先按「一行」的视角来写（kernel 里一个 threadblock 同时处理一个 Q 块的所有行，每行独立维护同一套状态，所以实现里这些状态是向量而非标量，见第 3 节）。把一行的列切块，每块 $B_c$ 列，维护三个 running 状态：
+## 2. 一行 softmax 的可合并状态
 
-- $m$：到目前为止见过的最大 logit（running row max）；
-- $l$：到目前为止的未归一分母 $\sum_{\mathrm{seen}} \exp(s - m)$，**以当前 $m$ 为基准**；
-- $O$：到目前为止的未归一分子 $\sum_{\mathrm{seen}} \exp(s - m)\, v$，同样以当前 $m$ 为基准。
-
-注意 $l$ 和 $O$ 都不是裸的累加和，而是带着基准 $m$ 的。新块 $S^{(j)}$（对应 $K^{(j)}, V^{(j)}$）到来时，基准可能抬高，旧累加要先换算到新基准，再加上新块的贡献：
+固定 query $i$，把已访问的 key 集合记作 $A$。定义三个统计量：
 
 $$
 \begin{aligned}
-m_{\mathrm{new}} &= \max\!\left(m,\ \mathrm{rowmax}\!\left(S^{(j)}\right)\right) \\
-\alpha &= \exp(m - m_{\mathrm{new}}) \\
-p &= \exp\!\left(S^{(j)} - m_{\mathrm{new}}\right) \\
-l &\leftarrow \alpha \cdot l + \mathrm{rowsum}(p) \\
-O &\leftarrow \alpha \cdot O + p\, V^{(j)} \\
-m &\leftarrow m_{\mathrm{new}}
+m_A&=\max_{j\in A} S_{ij},\\
+\ell_A&=\sum_{j\in A}e^{S_{ij}-m_A},\\
+u_A&=\sum_{j\in A}e^{S_{ij}-m_A}v_j.
 \end{aligned}
 $$
 
-处理完所有块后做一次 $O \leftarrow O / l$，即得正确结果。
+$m_A,\ell_A$ 是标量，$u_A$ 是 $d_v$ 维向量。该集合上的归一化输出为 $o_A=u_A/\ell_A$。保存 $u_A$ 而非已归一化的 $o_A$，可以避免每处理一个 tile 都做除法。
 
-**为什么要乘 $\alpha$**：换基准只需要一次乘法。旧累加里的每一项是 $\exp(s - m_{\mathrm{old}})$，搬到新基准上就是
+现在得到另一个不相交集合 $B$ 的统计量。两者能合并为
 
 $$
-\exp(s - m_{\mathrm{old}}) = \exp(s - m_{\mathrm{new}}) \cdot \exp(m_{\mathrm{old}} - m_{\mathrm{new}}) = \exp(s - m_{\mathrm{new}}) \cdot \alpha
+\begin{aligned}
+m&=\max(m_A,m_B),\\
+\ell&=e^{m_A-m}\ell_A+e^{m_B-m}\ell_B,\\
+u&=e^{m_A-m}u_A+e^{m_B-m}u_B.
+\end{aligned}
 $$
 
-即基准每抬高一次，全部旧贡献统一乘一个折扣因子 $\alpha$，再加上新块按新基准算出的贡献。看一个具体的数：设当前 $m = 3$、$l = 10$，新块的 rowmax 是 $5$，则 $m_{\mathrm{new}} = 5$、$\alpha = e^{-2} \approx 0.135$，旧的 $l$ 先折成 $1.35$ 再加新块的 rowsum，$O$ 同理。由于 $m$ 单调不减，$\alpha \le 1$ 恒成立——旧贡献只会被等比缩小，不会被放大。整个累加对块的处理顺序不敏感（只要每块恰好处理一次），这正是 Ring Attention 能把它扩展成跨卡环形循环的原因。
+这不是近似：只是把两部分分子、分母改用同一个指数基准。关键恒等式的方向是
 
-**数值稳定性**：减 $m_{\mathrm{new}}$ 保证 $\exp$ 的指数不超过 0，永不上溢；$\alpha \le 1$ 也不会上溢。这和标准的 "subtract max" 技巧等价，只是 max 是流式逼近出来的。
+$$
+e^{S_{ij}-m}=e^{S_{ij}-m_A}\,e^{m_A-m}.
+$$
 
-### 实现简化：直接维护 LSE
+新基准更大时，旧贡献要缩小。若写成相反方向，就会把旧块放大，失去 softmax 的正确归一。
 
-Triton kernel 不单独存 $m$ 和 $l$，而是直接维护 **$\mathrm{lse} = m + \log(l)$**（log-sum-exp）。看 [[flash-attention:flash_attn/flash_attn_triton.py#L212-L252]]：
+### 一个两块例子
+
+取 logits 为 $(0,\log 2,\log 4)$，value 为标量 $(1,3,5)$，把前两项与最后一项分别作为两个 tile。第一块有 $m_A=\log2$、$\ell_A=1.5$、$u_A=3.5$；第二块有 $m_B=\log4$、$\ell_B=1$、$u_B=5$。合并时第一块乘 $1/2$：
+
+$$
+\ell=\frac12\cdot1.5+1=1.75,\qquad
+u=\frac12\cdot3.5+5=6.75,\qquad
+o=\frac{27}{7}.
+$$
+
+直接计算也得到 $(1+2\cdot3+4\cdot5)/(1+2+4)=27/7$。独立地对两块做 softmax 再平均两个输出则不对，因为丢失了两块分母的相对大小。
+
+上述 merge 在实数算术下可结合，因此可以按顺序流式处理，也可以树形合并或跨 GPU 合并。浮点加法不满足精确结合律，不同 tile/规约顺序一般只保证数值接近，不保证逐位一致。
+
+## 3. Tiled forward
+
+取一个 query tile $Q_i\in\mathbb R^{B_r\times d}$，依次访问 KV tile $K_j,V_j$。对 tile 中每一行分别维护 $m,\ell,u$，初值为 $(-\infty,0,0)$。新 tile 到来时：
+
+$$
+\begin{aligned}
+S_{ij}&=\tau Q_iK_j^\top+M_{ij},\\
+m'&=\max(m,\operatorname{rowmax}(S_{ij})),\\
+\alpha&=e^{m-m'},\qquad \widetilde P_{ij}=e^{S_{ij}-m'},\\
+\ell'&=\alpha\odot\ell+\operatorname{rowsum}(\widetilde P_{ij}),\\
+u'&=\alpha\odot u+\widetilde P_{ij}V_j.
+\end{aligned}
+$$
+
+行向量统计量在列维广播，$u$ 的 shape 为 `[Br, dv]`。全部可见 tile 处理完后才计算
+
+$$
+O_i=u/\ell,\qquad L_i=m+\log\ell.
+$$
+
+$L_i$ 就是每行 log-sum-exp，简称 LSE。保存它可以让 backward 直接重建每一个概率，不必再扫描整行计算分母。
+
+```mermaid
+flowchart LR
+    Q[固定 query tile] --> S[片上 QK 转置与 mask]
+    KV[逐块加载 K / V] --> S
+    S --> U[更新 m、分母与加权分子]
+    U --> U
+    U --> O[最后归一化并写出 O / LSE]
+```
+
+原始 FA1 的 IO 分析与 Algorithm 1 采用 KV 外层遍历；上述固定 query tile 的写法更接近常见 FA2 forward 调度。二者共享同一 online softmax 恒等式，不应把某一种 loop nesting 当成所有版本的不变量。
+
+### Mask 与数值边界
+
+causal attention 中，完全位于未来的 tile 可直接跳过；跨对角线的 tile 逐元素 mask。全被 mask 的局部 tile 不贡献任何值，应跳过或显式处理，避免计算 $-\infty-(-\infty)$。如果某一行全局没有可见 key，softmax 本身没有通常意义的概率定义，输出行为应由 API 明确规定。
+
+指数减去最大值可避免上溢，但不能消除全部舍入误差。累积分母和输出通常使用 FP32；QK、PV 的矩阵乘法可使用低精度输入。这里的 exact 指没有改变 attention 定义，与「所有中间操作都无限精度」不同。
+
+## 4. 从链式法则推导 backward
+
+记损失为 $\mathcal L$，上游梯度为 $G=\nabla_O\mathcal L$。以下先假设没有 dropout。由 $O=PV$：
+
+$$
+\nabla_V\mathcal L=P^\top G,\qquad
+\nabla_P\mathcal L=GV^\top.
+$$
+
+对一行 softmax，Jacobian 为
+
+$$
+\frac{\partial P_{ij}}{\partial S_{ik}}
+=P_{ij}(\delta_{jk}-P_{ik}).
+$$
+
+代入链式法则得到
+
+$$
+(\nabla_S\mathcal L)_{ij}
+=P_{ij}\left((\nabla_P\mathcal L)_{ij}-D_i\right),
+\qquad
+D_i=\sum_kP_{ik}(\nabla_P\mathcal L)_{ik}.
+$$
+
+如果直接按右边求 $D_i$，似乎还要遍历整行概率。但利用 $O_i=\sum_kP_{ik}V_k$，可得
+
+$$
+D_i=\sum_kP_{ik}\langle G_i,V_k\rangle
+=\left\langle G_i,\sum_kP_{ik}V_k\right\rangle
+=\langle G_i,O_i\rangle.
+$$
+
+因此只需要对每行输出维度做一次点积，就能预先求出全部 $D$。这是 backward 能逐 tile 独立恢复概率并求导的关键。
+
+最后，由 $S=\tau QK^\top+M$，有
+
+$$
+\nabla_Q\mathcal L=\tau(\nabla_S\mathcal L)K,\qquad
+\nabla_K\mathcal L=\tau(\nabla_S\mathcal L)^\top Q.
+$$
+
+固定 mask 不需要求导。缩放 $\tau$ 在 Q/K 梯度中各出现一次；恢复概率时直接使用已经缩放的 $S$，不能再重复乘 $\tau$。
+
+## 5. 不保存 P 的 tiled backward
+
+forward 保存 Q/K/V、O、LSE；其中 Q/K/V 本来就是输入，不需要另复制一套。backward 先算 $D_i=\langle G_i,O_i\rangle$，然后对每个可见的 tile 重算
+
+$$
+\begin{aligned}
+S_{ij}&=\tau Q_iK_j^\top+M_{ij},\\
+P_{ij}&=e^{S_{ij}-L_i},\\
+E_{ij}&=G_iV_j^\top,\\
+F_{ij}&=P_{ij}\odot(E_{ij}-D_i).
+\end{aligned}
+$$
+
+接着累加三个梯度：
+
+$$
+\begin{aligned}
+\nabla_{V_j}\mathcal L&\mathrel{+}=P_{ij}^\top G_i,\\
+\nabla_{Q_i}\mathcal L&\mathrel{+}=\tau F_{ij}K_j,\\
+\nabla_{K_j}\mathcal L&\mathrel{+}=\tau F_{ij}^\top Q_i.
+\end{aligned}
+$$
+
+所有 $B_r\times B_c$ 的概率和 score 梯度都可以在片上生成、使用、丢弃。LSE 已包含全局分母，当前 tile 不需要知道其他 tile 的 logits。
+
+| 梯度 | 需要归约哪个方向 | 调度含义 |
+|---|---|---|
+| dQ 的一个 tile | 所有可见 KV tile | 固定 Q 时可本地累积 |
+| dK/dV 的一个 tile | 所有引用它的 Q tile | 固定 KV 时可本地累积 |
+
+常见 backward 固定 KV tile，以减少 dK/dV 写入冲突；dQ 则需要原子加或额外归约。也可以使用不同分工或分开的 dQ kernel。并不存在一种固定循环方向同时消除全部跨 tile 累加。
+
+### Dropout 与确定性
+
+若 attention probability 使用 dropout，令 $R_{ij}$ 为保留 mask 除以保留概率，则 $O=(P\odot R)V$。此时
+
+$$
+\nabla_V\mathcal L=(P\odot R)^\top G,\qquad
+\nabla_P\mathcal L=(GV^\top)\odot R.
+$$
+
+仍有 $D_i=\langle G_i,O_i\rangle$，但 backward 必须恢复 forward 的同一份 $R$。因此实现保存 RNG seed/offset 等状态，按同一逻辑位置重放随机数，无需保存一个平方大小的 dropout mask。是否使用确定性归约、具体 RNG 映射由实现保证。
+
+### 重算为什么可能更快
+
+FA 多算了一遍 QK，却少了保存和读取完整 P，以及其他平方中间量的 HBM 往返。重算成本与 IO 节省的大小由硬件和 shape 决定，不能断言它总能被完全隐藏。该策略也不同于整层 activation checkpointing：FA 仅重算 attention 内部的 S/P，不必重算 QKV projection 和 FFN。
+
+## 6. 对照实现
+
+理解上述定义后，只需把实现中的 `acc_o` 对应到未归一分子 $u$，把 `softmax_lse` 对应到 $L$，把 `delta` 或 `D` 对应到 $\operatorname{rowsum}(G\odot O)$。不同版本可能使用自然对数或 base-2 LSE，恢复概率时必须配套转换。
+
+### LSE 形式的状态更新
+
+这份 Triton 参考实现不单独存 $m$ 和 $l$，而是直接维护 **$\mathrm{lse} = m + \log(l)$**（log-sum-exp）。看 [[flash-attention:flash_attn/flash_attn_triton.py#L212-L252]]：
 
 ```python
 # m_ij = 本块 rowmax 与历史 lse 取 max（lse 充当 running max 的上界）
@@ -98,49 +237,9 @@ o_scale = tl.exp(m_i - lse_i)                             # = 1/l        :254
 acc_o = acc_o * o_scale[:, None]                          # :258
 ```
 
-`lse` 既是 backward 需要的统计量（见第 5 节），又省去了单独存 $l$ 的开销。注意整个循环里 `acc_o` 都没有除以 $l$，只在最后乘一次 `o_scale` $= \exp(m - \mathrm{lse}) = 1/l$。这个「延迟归一」是 FA2 削减 non-matmul FLOPs 的雏形（02 第 1 节会进一步展开为「连 $\alpha$ 修正都尽量延迟」）。
+`lse` 既是 backward 需要的统计量（见第 5 节），又省去了单独存 $l$ 的开销。注意整个循环里 `acc_o` 都没有除以 $l$，只在最后乘一次 `o_scale` $= \exp(m - \mathrm{lse}) = 1/l$。这个「延迟归一」是 FA2 削减 non-matmul FLOPs 的雏形。
 
-## 3. Tiling 后的 forward 算法
-
-把 online softmax 套进 tiling：Q 的行切成 $[B_r, d]$ 块，KV 的列切成 $[B_c, d]$ 块。一个 kernel instance 处理一个 Q 块 $Q_i$，外层循环遍历 KV 块。伪代码：
-
-```
-# 一个 CTA：固定 Q_i ∈ [Br, d]，载入 SMEM/寄存器
-m_i = -inf  (∈ [Br])           # running max
-l_i = 0                        # running sum
-O_i = 0     (∈ [Br, d])        # running 输出
-for j in range(N / Bc):        # 外层：遍历所有 KV 块
-    K_j, V_j = load(...)       # [Bc, d] → SMEM（这是唯一的 HBM 读流量）
-    S_ij = (Q_i @ K_jᵀ) * scale          # [Br, Bc]  ← GEMM-I，停在寄存器，不落 HBM
-    S_ij = apply_mask(S_ij, i, j)        # causal/sliding/varlen（见 02/04）
-    m_new = max(m_i, rowmax(S_ij))
-    P_ij  = exp(S_ij - m_new)            # [Br, Bc]
-    α     = exp(m_i - m_new)
-    l_i   = α * l_i + rowsum(P_ij)
-    O_i   = α * O_i + P_ij @ V_j          # [Br, d]   ← GEMM-II
-    m_i   = m_new
-O_i = O_i / l_i                           # 一次性归一
-LSE_i = m_i + log(l_i)                    # 存给 backward
-write(O_i, LSE_i)                          # 唯一的 HBM 写流量（都是 O(N)）
-```
-
-要点：
-
-- 两个 GEMM（$QK^{\top}$ 和 $PV$）的输出 $S_{ij}$、$O_i$ 全程停留在寄存器或 SMEM 中，从不写 HBM。HBM 上只发生两类流量：读 $Q, K, V$（$O(Nd)$），写 $O, \mathrm{LSE}$（$O(Nd)$）。HBM 流量因此从 $O(N^2)$ 降到 $O(Nd)$（更精确的表达式是 $O(N^2 d^2 / M)$，$M$ 为 SRAM 大小）。
-- $S/P$ 的显存占用是 $O(B_r \cdot B_c)$ 的常数，与 $N$ 无关，整体显存因此是 $O(N)$（只剩 $O, \mathrm{LSE}$）。这就是长上下文能够运行的根本原因。
-- 这是一个 fused kernel：GEMM-I、mask、softmax、GEMM-II 全部在一个 kernel 里完成，没有 kernel 启动开销，也没有中间结果落盘。
-
-FA2 C++ 的 mainloop 与上面的流程一一对应（[[flash-attention:csrc/flash_attn/src/flash_fwd_kernel.h#L302-L410]]），它把循环拆成「需要 mask 的块」和「满块」两段（02 第 4 节），每块依次执行 `gemm`（$QK^{\top}$）、`softmax_rescale_o`（online softmax 加修正 $O$）、`gemm_rs`（$PV$）：
-
-```cpp
-FLASH_NAMESPACE::gemm<...>(acc_s, ...);                                  // :319  S=QKᵀ
-mask.template apply_mask<...>(acc_s, ...);                               // 掩码
-softmax.template softmax_rescale_o</*Is_first=*/.., /*Check_inf=*/..>(   // :342-344
-    acc_s, acc_o, params.scale_softmax_log2);                           //  online softmax + α·O
-FLASH_NAMESPACE::gemm_rs(acc_o, tOrP, tOrVt, ...);                       // :367  O += P·V
-```
-
-## 4. 用 `exp2` 替代 `exp`
+### 用 `exp2` 替代 `exp`
 
 GPU 的 SFU（special function unit）提供硬件 `exp2`（base-2 指数）指令，比 `expf` 快。FA 把 $\exp(x)$ 改写成 $\mathrm{exp2}(x \cdot \log_2 e)$，并把 $\log_2 e$ 预乘进 softmax_scale，这样循环里只剩一条 `exp2`。看 [[flash-attention:csrc/flash_attn/src/softmax.h#L66-L88]] 的 `scale_apply_exp2`：
 
@@ -151,46 +250,19 @@ tensor(mi, ni) = exp2f(tensor(mi, ni) * scale - max_scaled);   // :86/:88
 
 因此 C++ 代码里到处出现 `scale_softmax_log2`、`softmax_scale_log2`（而不是 `softmax_scale`），FA4 CuTeDSL 同理使用 `scale_log2` 加 `cute.math.exp2(...)`（[[flash-attention:flash_attn/cute/softmax.py#L168-L181]]）。读 kernel 时看到 `_log2` 后缀和 `exp2` 不必困惑，它们对应的就是这个微优化。`Softmax::softmax_rescale_o` 的 `Is_first` 模板参数是另一个优化：处理第一个 KV 块时不需要 $\alpha$ 修正（此时还没有旧累加），可以在编译期特化掉。
 
-## 5. Backward：recomputation 与 LSE
 
-attention 的 backward 需要计算 $dQ, dK, dV$。标准做法要用到 forward 的 $P$（shape $[N,N]$），但 FA 没有保存它（只保存了 $O(N)$ 大小的 $O, \mathrm{LSE}$）。FA 的选择是 recompute：backward 时用 $Q, K, V$ 重新计算 $S$，再用保存下来的 $\mathrm{LSE}$ 一步还原 $P$：
+更多代码对应：
 
-$$
-P = \exp(S \cdot \mathrm{scale} - \mathrm{LSE})
-$$
+- [[flash-attention:csrc/flash_attn/src/flash_fwd_kernel.h#L302-L410]]：QK、online softmax 和 PV 的 fused mainloop。
+- [[flash-attention:flash_attn/flash_attn_triton.py#L510]]：用 LSE 重算概率。
+- [[flash-attention:flash_attn/flash_attn_interface.py#L873]]：autograd 保存的输入、输出、LSE 与 RNG state。
 
-这就是 LSE 的核心用途：它把「row max 加 log row-sum」压缩成一个 $[N]$ 向量，使 backward 不必重做 online softmax 的 max/sum 归约，直接 $\exp(S - \mathrm{LSE})$ 就是正确的 $P$。
+## 7. 三个可复用的结论
 
-backward 的梯度公式（标准 attention 求导，FA 在 tiling 下流式完成）：
-
-$$
-\begin{aligned}
-dV &= P^{\top} dO \\
-dP &= dO V^{\top} \\
-dS &= P \odot (dP - \mathrm{rowsum}(dO \odot O)) \\
-dQ &= dS K \cdot \mathrm{scale} \\
-dK &= dS^{\top} Q \cdot \mathrm{scale}
-\end{aligned}
-$$
-
-其中第三行是 softmax 的 Jacobian：$\mathrm{rowsum}(dO \odot O)$ 对每行归约，是一个 $[N]$ 向量。
-
-infra 层面的要点：
-
-- **用算力换显存**：重算 $S$ 带来额外的 $O(N^2 d)$ FLOPs，但省下 $O(N^2)$ 的 $P$ 存储。因为 attention 本来就是 memory-bound，多算的这部分基本被带宽节省掩盖，整体仍然大幅加速。Triton 的 `_bwd_kernel` 在 [[flash-attention:flash_attn/flash_attn_triton.py#L510]] 处的 `p = tl.exp(qk * softmax_scale - lse_i[:, None])` 就是这一步重算。
-- **backward 的循环方向与 forward 相反**：forward 固定 Q 块、循环 KV 块；backward 为了累加 $dK, dV$，通常固定 KV 块、循环 Q 块（一个 $[B_c, d]$ 的 K/V 块需要收集所有 attend 到它的 Q 的梯度贡献）。$dQ$ 因此是跨块累加的，需要原子加或额外的 reduce（FA2 的 `deterministic` 选项就是控制这个累加是否可复现，见 04）。
-- **保存什么**：forward 的 `ctx.save_for_backward` 只保存 `q,k,v,out,softmax_lse,rng_state`（[[flash-attention:flash_attn/flash_attn_interface.py#L873]]），不包含 $P$。`rng_state` 用于在 backward 时重放 dropout 的同一组随机数，保证梯度是 exact 的。
-
-## 6. 小结
-
-| 不变量 | 作用 | 代码锚点 |
+| 机制 | 数学依据 | 延伸 |
 |---|---|---|
-| **tiling** | $S/P$ 块停在 SRAM，HBM 流量 $O(N^2) \to O(Nd)$，显存 $O(N)$ | 所有 kernel 的「外层 KV-block 循环」 |
-| **online softmax** | 无需全局 $S$ 就能流式算对，对块顺序不敏感 | [[flash-attention:csrc/flash_attn/src/softmax.h#L128]], `triton:212`, [[flash-attention:flash_attn/cute/softmax.py#L127]] |
-| **recomputation + LSE** | backward 不存 $P$，用 $\mathrm{LSE}$ 一步重算 $P$，算力换显存 | `triton:510`, [[flash-attention:flash_attn/cute/interface.py#L873]] |
+| Online softmax | 分子分母可以换基并合并 | Ring Attention、split-K decode |
+| 重算概率 | $P_{ij}=\exp(S_{ij}-L_i)$ | 不保存平方中间量的 backward |
+| 输出点积 | $D_i=\langle G_i,O_i\rangle$ | 省掉对整行 P/dP 的额外归约 |
 
-这三点在 FA1/2/3/4 里完全一致。接下来两篇讲的都是同一个问题：这套算法在 GPU 上如何摆放线程、内存与异步指令，才能把硬件跑满。
-
----
-
-下一篇：[02 · FA2：并行度与 work partitioning](./02_fa2_parallelism.md) —— FA2 在不改算法的前提下，靠「延迟 rescale 削减非 matmul FLOPs、沿 seqlen 维并行、warp 从 split-K 改 split-Q」三项改进，把利用率从 FA1 的约 30% 提升到 A100 的 50–73%。
+这三条等式比某个 kernel 的循环结构更稳定。下一篇 [FA2](./02_fa2_parallelism.md) 讨论如何减少非 matmul 开销、增加 query 维并行并调整 warp 分工；[[atlas:docs/attention/fa/fa_lab.ipynb|FA lab]] 可用于逐项验证 forward 与 backward。

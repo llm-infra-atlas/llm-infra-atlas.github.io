@@ -98,9 +98,16 @@ P ≈ L · [ 2·h·q·(1 + g/a)  +  3·h·ffn  +  2·h ]  +  V·h
 
 每 rank 的 $P_{\text{shard}}$：源码按「最重 shard」估——首个 PP stage 持有 $1/\mathrm{PP}$ 的层 + embedding（+ MTP block），TP 切分的部分除 $\mathrm{TP}$，expert 部分除 $\mathrm{ETP}\cdot\mathrm{EP}$，LayerNorm/router 等复制参数不除（:219-244）：
 
-```
-P_shard(most loaded) = (TP切分参数/PP + embedding) / TP + 复制参数/PP + expert参数/(PP·ETP·EP)
-```
+设 $P_{\mathrm{TP}}$ 为可按 TP 切分的非 expert block 参数，$P_{\mathrm{rep}}$ 为 TP 复制参数，$P_E$ 为 expert 参数，$P_{\mathrm{emb}}$ 为当前 stage 承担的 embedding 参数，则原估算可写为
+
+$$
+P_{\mathrm{shard}}\approx
+\frac{P_{\mathrm{TP}}/\mathrm{PP}+P_{\mathrm{emb}}}{\mathrm{TP}}
++\frac{P_{\mathrm{rep}}}{\mathrm{PP}}
++\frac{P_E}{\mathrm{PP}\cdot\mathrm{ETP}\cdot\mathrm{EP}}.
+$$
+
+该式假设 block/expert 在 PP 上均匀分配；embedding 与 tied output 的实际放置需要按最重 stage 单独处理。
 
 这也是为什么首尾 stage 的参数侧显存比中间 stage 多一块 embedding——PP 各 stage 的 weights/grads/optimizer 并不均分。
 
@@ -146,26 +153,34 @@ $$
 
 [[megatron-lm:megatron/training/theoretical_memory_usage.py#L280-L351]] 把上面几步拼成「first stage 峰值」的完整公式（SP + selective 分支）。先给总定义式，再逐步对行号：
 
-```
-M_first_stage = [ s·b·h·(18 + 4·ffn/h)·L + 8·s·b·p + s·b·h·p ] · penalty · discount / t
-                └──────── 层 ────────┘   └ embedding 两项 ┘
-penalty  = 1 + (p-1)/(p·v)   （仅 VPP；:314-327）
-discount = min(1, m/p)       （仅非 interleaved 且 m < p；:331-336）
-p == 1 时再加 output 项 4·s·b·h·(1 + V/h)（:340-348，加在 ÷t 之前）
-```
+把 VPP 惩罚与 micro-batch 折扣分别记为 $\rho,\delta$，该估算可整理为
+
+$$
+M_{\mathrm{first}}=\frac{1}{t}\left\{
+\left[sbh\left(18+4\frac{\mathrm{ffn}}h\right)L+8sbp+sbhp\right]\rho\delta
++\mathbf1_{\{p=1\}}\,4sbh\left(1+\frac Vh\right)\right\}.
+$$
+
+$$
+\rho=\begin{cases}1+\dfrac{p-1}{pv},&\text{VPP},\\1,&\text{otherwise},\end{cases}
+\qquad
+\delta=\begin{cases}\min(1,m/p),&\text{non-interleaved},\\1,&\text{interleaved}.\end{cases}
+$$
+
+$18+4\mathrm{ffn}/h$ 是层内项；$8sbp+sbhp$ 是 embedding 输入与 dropout mask；仅 $p=1$ 时加入 output 项。所有项最后按 TP 度 $t$ 缩减。
 
 逐步对应：
 
-```
-① 每层每 micro-batch：  s·b·h·(18 + 4·ffn/h)                :289-291
-② × L（= L/p 层 × p 个 in-flight micro-batch）              :297
-③ + embedding 输入 8·s·b·p（token id，int64 8 B）           :302-304
-  + embedding dropout mask s·b·h·p（1 B/elem）               :306-311
-④ × VPP 惩罚 1 + (p-1)/(p·v)              （有 VPP 时）      :314-327
-⑤ × min(1, m/p)      （非 interleaved 且 m < p 时打折）      :331-336
-⑥ + output layer/CE 4·s·b·h·(1 + V/h)   （仅 p == 1）        :340-348
-⑦ ÷ t                                                   :350-351
-```
+公式与估算器的步骤对应如下：
+
+| 步骤 | 数学项 | 源码位置 |
+|---|---|---|
+| 单层、单 micro-batch | $sbh(18+4\mathrm{ffn}/h)$ | `:289–291` |
+| 层数与在途 micro-batch | 乘 $L=(L/p)\cdot p$ | `:297` |
+| Embedding 输入与 mask | 加 $8sbp+sbhp$ | `:302–311` |
+| VPP 与 batch 折扣 | 乘 $\rho\delta$ | `:314–336` |
+| 单 stage 的 output/CE | 加 $4sbh(1+V/h)$ | `:340–348` |
+| TP 缩减 | 除以 $t$ | `:350–351` |
 
 几处值得停顿：
 

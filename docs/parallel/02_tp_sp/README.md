@@ -67,20 +67,32 @@ assert dim_size % world_size == 0, \
 
 TP 的核心想法，是把一个大的计算 $Z = f(XA) \cdot B$ 切到多张卡上分别算，再用集合通信把结果拼回逻辑上正确的张量。Megatron 巧妙的地方在于，column-parallel 和 row-parallel 这两种切法刚好互补，把它们串联起来之后，整段计算只需要一次通信：
 
-```
-column-parallel:   A = [A_1, A_2]            (按列切权重)
-                   Y = X·A = [X·A_1, X·A_2]   每卡算一段输出列，无需通信即得 Y_i
-row-parallel:      B = [B_1; B_2]            (按行切权重)
-                   Z = Y·B = Y_1·B_1 + Y_2·B_2  每卡算一部分和，all-reduce 求和得 Z
-```
+column-parallel 按输出列切分：
+
+$$
+A=\begin{bmatrix}A_1&A_2\end{bmatrix},\qquad
+Y=XA=\begin{bmatrix}XA_1&XA_2\end{bmatrix}.
+$$
+
+每卡可独立产生输出列 $Y_i$。后接 row-parallel 时，沿输入行切权重：
+
+$$
+B=\begin{bmatrix}B_1\\B_2\end{bmatrix},\qquad
+Z=YB=Y_1B_1+Y_2B_2.
+$$
+
+每卡得到一个部分和，all-reduce 合并成完整 $Z$。
 
 把它们级联起来（column → 非线性 → row），中间的非线性函数是 element-wise 的，可以直接在切开的状态下计算，于是整段就变成了：
 
-```
-Z = f( X·A )·B        # f = GELU/SwiGLU 等
-切开后:  Y_i = f(X·A_i)         (本地, 无通信)
-         Z   = Σ_i Y_i·B_i      (一次 all-reduce)
-```
+若中间非线性 $f$ 可在各输出 shard 内独立计算，则
+
+$$
+Z=f(XA)B,\qquad Y_i=f(XA_i),\qquad
+Z=\sum_iY_iB_i.
+$$
+
+各 $Y_i$ 在本地计算，最后对部分和做一次 all-reduce；SwiGLU 需要把对应 gate/up 通道配对分片。
 
 > 一个 MLP block、或者一个 attention block，forward 只需要一次 all-reduce，backward 也只需要一次 all-reduce。这正是 Megatron TP 论文（Shoeybi et al., 2019, [arXiv:1909.08053](https://arxiv.org/abs/1909.08053)）的核心结论。代价是激活在 TP 维上处于「完整复制」状态（每张卡都持有完整的 $[s, b, h]$），这正是 SP 要解决的问题，见 03。
 

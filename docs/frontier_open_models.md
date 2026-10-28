@@ -1,8 +1,8 @@
 # 01 · 前沿开源模型架构速览
 
-> 读这篇之前，只需要知道 decoder-only Transformer、MoE（每个 token 只激活一部分 expert）和 KV cache 这几个概念。本文不展开这些机制本身的推导——它们分别在 [Attention](./attention/README.md)、[Expert Parallelism (EP)](./parallel/05_ep/README.md)、[GPU 集群与网络 —— HPC 视角](./hpc/README.md) 里讲过。这里要整理的是一组 2026 年中仍在用的架构常识：当前最强的主流开源模型长什么样，同一 family 里又各自改了什么。全文先统一参数口径、给出当前旗舰的对照表（§0–§1），再按 family 逐家梳理各自的架构演进（§2–§10），最后附术语速查与来源（§11–§12）；可以顺序通读，也可以只查某一家。
->
-> **快照**：2026-08。入选原则：Artificial Analysis / LMArena 上当时最强的主流 **open-weight** 模型，再按 family 补前代经典。分数会过时，但架构上的设计选择相对稳定；数字以官方 model card / 技术报告为准，次要口径会标明。
+本文按模型的结构变化整理开放权重模型：先统一参数、上下文与发布口径，再比较主要 family，最后把新增机制连接到 attention、MoE 和 serving 章节。模型名称升级不一定意味着骨架改变；同一个 family 里的 Flash 版本也可能采用独立架构。
+
+**核验日期：2026-10-28。** 最新增补以官方 model card、技术报告与发布仓库为依据；历史表保留用于架构对照，不作为实时性能榜单。API 产品、开放 checkpoint、base/instruct、RL/distillation 版本分别标注，不从托管服务的上下文或能力反推开放权重配置。
 
 ---
 
@@ -18,22 +18,38 @@
 
 MoE 写成 `E=256, k=8, shared=1`：每层 256 个 routed expert，每 token 选 8 个，外加始终激活的 shared expert。`A` 记法（如 `235B-A22B`）表示 total–activated。
 
-2026 年中开源旗舰的几条共识（后面每个 family 都是这些趋势的变体）：
+截至本次核验，值得对照的设计方向包括：
 
-1. **MoE 是默认形态**；dense 只出现在小模型、本地部署场景和少数经典模型中（Llama 3.1 405B、Gemma 4 31B）。
-2. **长上下文从「GQA + YaRN 128K」变成「稀疏 / 线性 / 压缩 attention + 原生 1M」**。KV cache 不再随长度按 $O(L)$ 无压缩地增长。
-3. **hybrid attention 成标配**：多数层用线性 / 窗口 / 压缩，少数层保留全局 softmax（典型 3:1）。
-4. **MTP（Multi-Token Prediction）几乎普及**，训练目标兼作推理投机解码。
-5. **thinking / reasoning effort 是 post-training 接口**，不是另一套骨架；同一套权重常带 low / high / max。
-6. **发布精度默认 FP8 / FP4**（expert 走更低 bit），BF16 完整权重反而少见。
+1. 大模型经常使用细粒度 MoE，但 total、active 与权重显存仍是不同指标；n-gram/Engram 等条件记忆还引入额外参数口径。
+2. 长上下文通过 sparse、linear、窗口、序列压缩与跨层 KV 共享等多种方法降本。固定压缩率和 sparse selection 通常只降低系数，KV 仍可随长度线性增长。
+3. Hybrid 不只意味着 linear/full 交替，也包括 linear/sparse、window/global，以及分成 producer/consumer 两段的 causal encoder-decoder。
+4. MTP 与其他 speculative decoder 越来越常见，但有些模型采用独立训练的 draft，不应统一记成 backbone 的一层 MTP。
+5. Thinking 与 agentic 能力的提升可能主要来自 post-training；GLM-5.3 就明确沿用 5.2 的 base。
+6. 发布 dtype 与训练 dtype 分开记录；FP4 权重、FP8 激活和 FP4 KV 分别作用于不同内存与计算路径。
+
+## 近期发布与结构变化
+
+下面是相对原有 2026-08 快照核实到的更新。其余 family 的经典结构保留在后续表中。
+
+| 发布 / checkpoint | 已核实的结构或口径 | 本仓库的阅读入口 |
+|---|---|---|
+| [DeepSeek-V4.1-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash) | 552B backbone，另有 196B Engram；40 层分成 20+20 的 CED；prefill/decode 激活分别 8B/16B；CSA2、跨层 KV/index 共享、原生图文 | [YOCO 与 CED](./attention/mechanisms/12_cross_layer_kv_yoco.md)、[CSA2](./attention/mechanisms/05_sparse_dsa_frontier.md) |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B / 6B，另计 51B n-gram embedding 与 4B MTP；48 层，GDN:QSA=3:1；gated residual | [hybrid](./attention/mechanisms/11_hybrid.md)、[QSA](./attention/mechanisms/05_sparse_dsa_frontier.md) |
+| [GLM-5.3](https://huggingface.co/zai-org/GLM-5.3) | 官方明确与 5.2 使用同一 base，提升来自 post-training | 本文 GLM family；不重复发明一套骨架 |
+| [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 独立的 `glm5_next` 原生多模态 checkpoint；与 5.3 的 `glm_moe_dsa` 区分 | 部署前按各自 config 与官方卡片核对 attention/cache 类型 |
+| [MiMo-V2.6-Pro-RL](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Pro-RL) | 70 层，60 SWA + 10 global；384 routed experts、top-8；speculative decoder 为 5 层 SWA；另有 MOPD checkpoint | 本文 MiMo family、[投机解码](./speculative_decoding/README.md) |
+
+截至核验日，DeepSeek 还发布了 [Flash-1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017)，官方将其标为 V4.1-Flash 的 minor update；这里保留架构名并单独注明 checkpoint，不据此推断又有一套新骨架。相应的 [DeepInfer 推理策略](./serving/09_deepinfer.md)已补入 serving 章节。
+
+这里不把尚未发布的后继名称作为已发布模型。Qwen 官方把 Flash-Next 称为后继架构的 experimental preview，这不等于已经发布了完整的 Qwen4 family。
 
 ---
 
-## 1. 当前旗舰对照
+## 1. 代表架构对照
 
-按 Artificial Analysis 开源大模型（>150B）智力指数大致排序（2026-08 快照），只列**开放权重**的主流 family 旗舰。同一格里的数字全部来自官方 card / 报告。
+下表保留原有代表模型以对照家族骨架，不按性能排名，也不把较新的小激活版本强行替换较大的前代。2026-08 之后的发布见上表与各 family 补充。
 
-| Family | 当前旗舰 | Total / Active | 层 | Attention | MoE | Context | 相对前代的关键变化 |
+| Family | 代表模型 | Total / Active | 层 | Attention | MoE | Context | 相对前代的关键变化 |
 |---|---|---|---|---|---|---|---|
 | Kimi | **K3** | 2.8T / 104B | 93 | 69 KDA + 24 Gated MLA；AttnRes | 896 routed, k=16, shared=2（LatentMoE） | 1M | 从全面采用 MLA 换成 hybrid 线性attention，同时更深更稀 |
 | Qwen | **3.8-2.4T-A95B** | 2.4T / 95B | 92 | 3:1 Gated DeltaNet / Gated Attention | 512, k=10+1 shared | 262K（可扩 ~1M） | 第一次把 Qwen-Max 级开源；骨架沿 3.5 |
@@ -45,7 +61,7 @@ MoE 写成 `E=256, k=8, shared=1`：每层 256 个 routed expert，每 token 选
 | Llama | **4 Maverick** | 400B / 17B | — | GQA + early fusion 多模态 | 128 routed + shared, k=1 | 1M | 家族第一次 MoE；Scout 用 16E / 10M 窗口 |
 | OpenAI | **gpt-oss-120b** | 117B / 5.1B | 36 | 交替 SWA-128 / full；GQA 64/8 | 128, k=4 | 128K (YaRN) | GPT-2 以来首个开源权重推理模型 |
 
-> DeepSeek **V4-Flash**（284B / 13B）不是另一套理念，而是 V4-Pro 的小激活对照版本，AA 上智力接近 Pro。Gemma 4 不进这张「大模型」表，它是当前最强的**本地 / 单机**开源族，见 §9。
+> DeepSeek **V4-Flash**（284B / 13B）不是另一套理念，而是 V4-Pro 的小激活对照版本，它与 Pro 共享主要设计路线。Gemma 4 不进这张「大模型」表，它面向**本地 / 单机**部署，见 §9。
 
 ---
 
@@ -91,11 +107,17 @@ MoE 侧 V4 仍是 DeepSeekMoE，但 expert 变宽（`moe_intermediate_size=3072`
 
 ---
 
+### 2.3 V4.1 的变化
+
+V4.1 不是简单扩大 V4：全局 KV 从 causal encoder 的边界投影生成，CSA2 进一步规定哪些层共享 KV、哪些层重算 top-k。它把「生成 KV 的计算深度」与「使用 KV 的层数」部分解耦，因此 prefill 和 decode 的激活参数量不再相同。SWA 仍保留逐层局部依赖，需要 bounded replay；不能把整个 decoder 当成无状态读出层。细节见 [YOCO 与 CED](./attention/mechanisms/12_cross_layer_kv_yoco.md)。
+
+Engram 则引入由 token/n-gram 索引的条件记忆。与 MoE 选择并执行 FFN 不同，条件记忆主要查询 embedding 表，再与 hidden state 融合；它增加的参数不能直接按同规模 dense matmul 计算成本估算，也不能因访问稀疏就忽略其存储与搬运成本。参数分项及训练设计见 [V4.1 报告](https://arxiv.org/abs/2609.19969)。
+
 ## 3. Kimi：K2 到 K3
 
 官方：K2 [arXiv:2507.20534](https://arxiv.org/abs/2507.20534) / [GitHub](https://github.com/MoonshotAI/Kimi-K2)；K3 [arXiv:2607.24653](https://arxiv.org/abs/2607.24653) / [HF](https://huggingface.co/moonshotai/Kimi-K3)。
 
-K2 的经典做法是在 DeepSeek-V3 骨架基础上把稀疏度再提一档：同样采用 MLA 与 DeepSeekMoE 风格的结构，但 expert 更多、attention 头更少。K3 是 2026-07 的开源智力顶端（AA Intelligence Index 开源第一档），也是首个公开的 3T 级权重。
+K2 的经典做法是在 DeepSeek-V3 骨架基础上把稀疏度再提一档：同样采用 MLA 与 DeepSeekMoE 风格的结构，但 expert 更多、attention 头更少。K3 于 2026-07 发布，总参数约 2.8T。
 
 | | K2 / K2.5 / K2.7 Code | **K3** |
 |---|---|---|
@@ -149,7 +171,13 @@ Qwen 的跳变不在「更深的 MLA MoE」，而在 **3.5 起换成 Gated Delta
 
 ---
 
-## 5. GLM：4.5 到 5.2
+### 4.1 Flash-Next 的另一条扩展轴
+
+Flash-Next 保留 3:1 的 GDN hybrid，但全局层改成 Qwen Sparse Attention（QSA）：以 4-token micro-block 为选择单位，预算为 512 blocks，即 2048 tokens；它不是把全局层也改成 recurrent state。原生 context 为 262,144，可扩展至 1M，开放 checkpoint 与托管 Flash 的默认窗口分开记录。
+
+其 51B n-gram embedding 独立于 125B 主模型和 4B MTP，适合研究「增加知识容量却不同比例增加每 token matmul」的路线。Gated Residual 进一步改变深度信息的读写方式。上述定义均来自 [官方 model card](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)，不能仅按名称把它当成 2.4T Qwen3.8 的等比例缩小版。
+
+## 5. GLM：4.5 到 5.3
 
 官方：GLM-4.5 [arXiv:2508.06471](https://arxiv.org/abs/2508.06471)；GLM-5 [arXiv:2602.15763](https://arxiv.org/abs/2602.15763)；GLM-5.2 [Z.ai blog](https://z.ai/blog/glm-5.2) / [NIM card](https://docs.api.nvidia.com/nim/reference/z-ai-glm-5.2)。
 
@@ -170,6 +198,10 @@ GLM 自己的设计哲学和 DeepSeek / Kimi 相反：**宁可更深、hidden �
 5.2 的 IndexShare：每 4 个 transformer 层共享一个轻量 indexer，只在这 4 层的第一层算 top-k，后 3 层复用。官方数字是 1M 上 indexer 相关 FLOPs 降约 **2.9×**。KV 体积并不按同样比例下降——长上下文的瓶颈从算力转移到 KV 容量，这是 serving 侧的关键事实。
 
 ---
+
+### 5.1 5.3 与 5.3-Flash
+
+[GLM-5.3](https://huggingface.co/zai-org/GLM-5.3) 的官方卡片明确写明沿用 GLM-5.2 的 base，改进来自 post-training。因此上表中的 5.2 骨架可继续作为这一分支的参考，版本升级不能自动算作 attention 架构升级。5.3-Flash 则是独立发布的原生多模态 `glm5_next` 模型，应按[其自身卡片](https://huggingface.co/zai-org/GLM-5.3-Flash)与配置核对；两个 checkpoint 的许可也应分别查看，不沿用 family 的旧标签。
 
 ## 6. MiniMax：Text-01 到 M3
 
@@ -224,7 +256,7 @@ Scout 和 Maverick **激活同为 17B**，所以单 token 算力接近；差别�
 | PE | RoPE + YaRN → 131,072 | 同左 |
 | 发布量化 | MXFP4（20b ~16GB，120b 单卡 80GB 可跑） | 同左 |
 
-骨架更接近 GPT-3（Pre-LN、交替局部 / 全局attention）而不是 MLA / DSA 系。5.1B 激活在 120B 总参数里极稀，这是它能塞进一张 H100 的原因。
+骨架更接近 GPT-3（Pre-LN、交替局部 / 全局attention）而不是 MLA / DSA 系。5.1B 激活主要降低每 token 计算；权重能装入单卡主要依赖 MXFP4 等存储方式，不能由 active 参数量推断权重显存。
 
 ---
 
@@ -264,7 +296,7 @@ Scout 和 Maverick **激活同为 17B**，所以单 token 算力接近；差别�
 
 ### 10.2 MiMo（小米）
 
-官方口径见 [MiMo-V2.5-Pro 模型说明](https://deepinfra.com/XiaomiMiMo/MiMo-V2.5-Pro)（与 HF card 一致）。
+官方：[MiMo-V2.5-Pro](https://huggingface.co/XiaomiMiMo/MiMo-V2.5-Pro)；最新增补以 [V2.6-Pro-RL](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Pro-RL) 为准。
 
 | | V2.5 | **V2.5-Pro** |
 |---|---|---|
@@ -279,6 +311,8 @@ Scout 和 Maverick **激活同为 17B**，所以单 token 算力接近；差别�
 
 和 Qwen / Kimi 的 3:1 线性 / 全局不同，MiMo 是**窗口attention为主、少量全局层**（约 6:1），更接近 Gemma / gpt-oss 的 SWA 传统，但把 MTP 做成 3 层原生模块，而不是 1 层的附属结构。
 
+V2.6-Pro-RL 仍采用 70 层、60 SWA + 10 global、hidden 6144、384 experts / top-8 的主干；其官方表把 speculative decoder 列为 **5 层 SWA、window 1024**，不能继续照抄 V2.5 的 3 层 MTP。V2.6 同时发布 [Pro-MOPD](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Pro-MOPD) 等蒸馏版本，需要把 backbone、post-training 路径和 draft 配置分别比较。
+
 ### 10.3 Mixtral
 
 [Mixtral 8×7B](https://arxiv.org/abs/2401.04088)（2023-12）是现代开源 MoE 的参照原点：8 个粗 expert、**top-2**、约 47B total / 约 13B active、32K。2026 的旗舰（k=8–16、数百 expert、shared expert、MLA / DSA / 线性attention）几乎都在与它相反的方向上演进——更细、更稀、attention 不再是满 GQA。新模型不必再列 Mixtral 的分数，但「MoE 是稀疏 FFN、attention 仍 dense」这个默认形态就是从它开始确立的。
@@ -289,7 +323,7 @@ Scout 和 Maverick **激活同为 17B**，所以单 token 算力接近；差别�
 
 | 词 | 一句话 | 往哪看 |
 |---|---|---|
-| **MLA** | 把 KV 压进低秩 latent，decode 用 MQA 模式共享一份压缩 KV | [Attention 机制](./attention/mechanisms/README.md)（规划中）；V3 是范本 |
+| **MLA** | 把 KV 压进低秩 latent，decode 用 MQA 模式共享一份压缩 KV | [Attention 机制](./attention/mechanisms/README.md)；V3 是范本 |
 | **DSA** | lightning indexer 先 top-k token，再只对子集做attention；复杂度 $O(Lk)$ | V3.2 / GLM-5 |
 | **CSA / HCA** | 先沿序列把每 $m$ / $m'$ 个 KV 压成一条，CSA 再 DSA，HCA 只做重压 | V4 |
 | **Gated DeltaNet / KDA** | 线性attention（递推状态，KV 不随 $L$ 涨）；KDA 是带 channel-wise forget 的 delta-rule | Qwen3.5/3.8、K3 |
@@ -300,13 +334,14 @@ Scout 和 Maverick **激活同为 17B**，所以单 token 算力接近；差别�
 | **DeepSeekMoE** | 细粒度 routed + 少量 shared；aux-loss-free bias；常配 group-limited top-k | [01 · Router 与 Dispatch 前的 Preprocess](./parallel/05_ep/01_router_and_preprocess.md) |
 | **LatentMoE** | routed expert 走降维 latent，shared 走满宽；才能支撑 896×16 的规模 | K3 |
 | **MTP** | 训练时多步预测，推理当 draft head | 几乎所有 2025+ 旗舰 |
+| **YOCO / CED** | 边界 hidden 生成供上层使用的 KV，减少跨层重复与 prompt 计算 | [跨层 KV 共享](./attention/mechanisms/12_cross_layer_kv_yoco.md) |
 | **IndexShare** | 多层复用同一个 DSA indexer 的 top-k | GLM-5.2 |
 
 ---
 
 ## 12. 来源
 
-检索入口（2026-08）：[Artificial Analysis · Large Open Source](https://artificialanalysis.ai/models/open-source/large)、[LMArena](https://arena.ai/leaderboard)。逐条数字以各节链接的 model card / 技术报告为准；V4-Flash 的层数 / hidden / expert 数对齐官方 `config.json` 口径（与 Pro 的 [HF config](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-Base/blob/main/config.json) 同一套字段）。
+历史榜单入口（不是本次架构更新依据）：[Artificial Analysis · Large Open Source](https://artificialanalysis.ai/models/open-source/large)、[LMArena](https://arena.ai/leaderboard)。逐条数字以各节链接的 model card / 技术报告为准；V4-Flash 的层数 / hidden / expert 数对齐官方 `config.json` 口径（与 Pro 的 [HF config](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-Base/blob/main/config.json) 同一套字段）。
 
 主要报告：
 

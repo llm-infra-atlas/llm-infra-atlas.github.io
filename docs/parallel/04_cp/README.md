@@ -1,6 +1,6 @@
 # Context Parallelism (CP)
 
-本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先给出一个统一抽象——Q-KV 二部任务图（attention pool），把 Ring 与 Ulysses 两大算法家族以及后续的负载均衡工作纳入同一框架；之后的 01/02 两篇分别深入两者，03 以负载均衡为线索调研长上下文训练（变长序列）下的一批工作，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。
+本章讨论 Context Parallelism（CP）：当序列长度增长到单卡无法容纳时，如何把 sequence 维切到多张卡上，并保证 attention 在序列被切开的情况下仍然算对、通信与计算能够 overlap。本文先给出一个统一抽象——Q-KV 二部任务图（attention pool），把 Ring 与 Ulysses 两大算法家族以及后续的负载均衡工作纳入同一框架；之后的 01/02 两篇分别深入两者，03 以负载均衡为线索调研长上下文训练（变长序列）下的一批工作，04 落到 Megatron 的工程实现；算法依赖的定义与公式会在正文中完整给出。05 把 KV 访问图扩展到 sparse attention，06 则从有序状态转移解释 linear attention 与 KCP；后者不能直接套用 softmax 的 KV 归约。
 
 ## 前置知识
 
@@ -16,7 +16,7 @@ TP 切 hidden、PP 切层、DP 切 batch，但三者都没有切 sequence。当 
 - **activation 显存随 $s$ 线性增长**：每层要保存 $[s, b, h]$ 的若干份激活，$s$ 大到一定程度后单卡放不下。SP 能把它降到 $1/\mathrm{TP}$，但 TP 通常只有 8，并不够。
 - **attention 的算力和显存随 $s^2$ 增长**：$QK^{\top}$ 是 $[s, s]$，FlashAttention 把显存压到 $O(s)$，但算力仍是 $O(s^2)$。单卡计算 1M token 的 attention 既慢，中间量也可能放不下。
 
-CP 的思路是把 sequence 维 $s$ 切到 $\mathrm{cp}$ 张卡，每卡只持有 $s/\mathrm{cp}$ 个 token 的 Q/K/V 和激活。难点在于 attention 是全局的：第 `i` 个 token 要 attend 到所有 `≤ i` 的 token（causal），而那些 token 的 K/V 分散在其它卡上。因此 CP 的全部工程设计都在回答同一个问题：
+CP 的思路是把 sequence 维 $s$ 切到 $\mathrm{cp}$ 张卡，每卡只持有 $s/\mathrm{cp}$ 个 token 的 Q/K/V 和激活。难点在于 attention 是全局的：第 `i` 个 token 要 attend 到所有 `≤ i` 的 token（causal），而那些 token 的 K/V 分散在其它卡上。对于 full/sparse softmax，这引出一个核心问题：
 
 > 序列被切开后，如何让每个 query 拿到它需要的所有 KV，同时不把通信变成瓶颈、不让显存退回 $O(s^2)$？
 
@@ -24,7 +24,7 @@ Ring 与 Ulysses 给出了两种不同的答案。不过在进入具体算法之
 
 ## 2. 统一抽象：Q-KV 二部任务图
 
-本节给出一个能把全章串起来的抽象。后面会看到，Ring、Ulysses 以及 03 篇的全部负载均衡工作，都可以纳入同一个对象——一张 Q-KV 二部任务图——之上的不同调度方案。
+本节给出 full/sparse softmax CP 的统一抽象。Linear attention 的状态依赖将在 06 单独讨论。后面会看到，Ring、Ulysses 以及 03 篇的全部负载均衡工作，都可以纳入同一个对象——一张 Q-KV 二部任务图——之上的不同调度方案。
 
 ### 2.1 任务图与 attention pool
 
@@ -111,7 +111,7 @@ Megatron 的 `a2a+p2p` 分层 CP 则是策略组合：node 内用策略 3（a2a 
 调度的成本模型很简单：边 $(i,j)$ 的计算量正比于 $|Q_i|\cdot|KV_j|$，负载均衡就是给每个 rank 分一个子图，使各子图的边权总和相等。全章遇到的所有均衡方案都是对这句话的具体化：
 
 - causal 图的边权随 $i$ 递增，朴素按 seq 切必然失衡；zigzag / striped 是给这张「下三角」图设计的**静态均衡划分**（§4，01 第 4 节）。
-- 按 head 切（策略 3）切出的子图完全同构，边权天然相等，无需任何修正（02 第 3 节）。
+- 相同 dense mask 下按 head 切（策略 3）切出的子图同构，边权相等；不同 head 使用不同 sparse pattern 时不再成立（02 第 3 节）。
 - packed 变长序列的边权不再规则（工作量正比于各文档长度的平方和，§5），静态划分失效，03 篇的一批工作因此把调度做成动态的：Libra TAP 逐个放置图中的 tile，DCP 则更进一步，把「data block + computation block + placement 求解」明确写成框架——可以说 DCP 就是把本节这张图的调度问题原样交给了求解器（TAP 与 DCP 均在 03 第 3.2 节）；MagiAttention 则用贪心求解器决定 chunk 到 rank 的任意置换，把 zigzag 的固定配对推广为逐 case 求解（03 第 4.4 节）。
 
 接下来的 §3 先按传统视角并排对比 Ring 与 Ulysses 两个家族，01/02 再分别深入。
@@ -135,8 +135,8 @@ flowchart TB
 | 维度 | **Ring** (`p2p`) | **Ulysses** (`a2a`) |
 |---|---|---|
 | 核心操作 | KV chunk 沿环 P2P 传递，每步算一块 attention，online softmax 累加 | 两次 all-to-all：把「seq 切」转成「head 切」，本地算完整 attention，再切回 |
-| 通信量/卡 | $O(s/\mathrm{cp} \cdot \mathrm{cp}) = O(s)$（每卡转一圈 KV），但可与 compute overlap | $O(s \cdot h/\mathrm{cp})$（两次 a2a），不可 overlap，但延迟低、次数少 |
-| 通信模式 | P2P（ring），async，**能藏进 attention 计算** | all-to-all，集合通信，同步 |
+| 通信量/卡 | $O(s/\mathrm{cp} \cdot \mathrm{cp}) = O(s)$（每卡转一圈 KV），但可与 compute overlap | $O(s \cdot h/\mathrm{cp})$（两次 a2a），朴素实现构成前后依赖，也可进一步分块流水化 |
+| 通信模式 | P2P（ring），async，计算足够长时可隐藏通信 | all-to-all；是否异步与分块 overlap 取决于实现 |
 | head 数约束 | 无 | **CP ≤ num_heads**（要按 head 切，且要整除）|
 | 计算复杂度 | 全 flash-attention，$O(s^2/\mathrm{cp})$ /卡 | 本地完整 attention $O(s^2)$/卡（但只在 $h/\mathrm{cp}$ 个 head 上）|
 | 适合 | 超长序列、CP 很大、跨机 | 中等序列、CP ≤ heads、对延迟敏感 |
@@ -227,7 +227,7 @@ b = 1
 ```
 
 - 每卡持有 `s/cp = 16K` 个 token 的 Q/K/V。
-- Ring：每卡的 KV chunk 为 `[16K, 64, 128]` bf16，约 256 MB（K+V），沿环传 `cp-1=7` 步，每一步与上一步的 attention compute overlap。
+- Ring：每卡的 KV chunk 为 `[16K, 64, 128]` bf16，约 512 MiB（K+V），沿环传 `cp-1=7` 步，每一步与上一步的 attention compute overlap。
 - Ulysses：a2a 把 `[16K, 64, 128]` 重排成 `[128K, 8, 128]`（每卡 8 个 head 的全序列），本地在 8 个 head 上计算 `128K²` 规模的 flash-attention。约束 CP=8 ≤ heads=64 满足。
 - zigzag：每卡持有的不是连续的 16K，而是 chunk `r` 和 chunk `15-r`（共 `2*cp=16` 块，每块 8K）。
 
@@ -242,9 +242,11 @@ b = 1
 | [02 · DeepSpeed-Ulysses](./02_ulysses_a2a.md) | DeepSpeed-Ulysses：用 all-to-all 在 sequence 切分与 head 切分之间转换、复杂度对比、head 数约束、`a2a+p2p` 分层 CP | Ulysses 论文，`mappings.py::_AllToAll` |
 | [03 · 长文负载均衡](./03_long_ctx_load_balance.md) | 长上下文训练的负载均衡：不均衡的三个维度（CP group 内 / CP group 间 / PP 维）、代价模型与 packing 的 Σℓ² 效应、按维度归类的八个工作（Libra、Skrull、WLB-LLM、FlexSP、Megatron-LM Dynamic CP、DCP、ChunkFlow、MagiAttention），Ulysses 按 head 切的均衡优势与 ring 的 zigzag 家族及其 dispatch 求解推广 | 八篇论文/博客的算法与伪代码 |
 | [04 · Megatron-LM 实现](./04_megatron_cp_integration.md) | Megatron 工程落地：`get_batch_on_this_cp_rank` 三条切分路径、CP group 构造（常规/分层/hybrid）、TE 传参与 per-microbatch 换组、RoPE 的 CP 处理、hybrid CP 调度器、与 SP/TP/PP 的协同 | [[megatron-lm:megatron/core/utils.py#L2308]], `attention.py`, `hybrid_cp_schedule.py` |
+| [05 · Sparse attention CP](./05_sparse_attention_cp.md) | window halo、分布式 top-k、KV 拉取与 Q 派发、softmax 合并与梯度返回、稀疏负载均衡 | MTraining、DSV |
+| [06 · Linear attention CP 与 KCP](./06_linear_attention_kcp.md) | affine prefix/suffix scan、KDA transition、WY 摘要、packed reset、短卷积 halo、FLA 实现与精度 | Kimi K3、FLA CP |
 | [[atlas:docs/parallel/04_cp/cp_lab.ipynb]] | 纯 torch 手写 ring attention（online softmax + 真实 P2P）和 Ulysses（all-to-all）两条路径，CPU/gloo 本地多进程，逐元素对齐 full attention，并演示 zigzag 负载均衡 | —— |
 
-建议按顺序阅读：本文先用统一抽象建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、以负载均衡的维度为线索调研长上下文训练的一批工作，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），最后通过 lab 亲手实现两条路径。
+建议按顺序阅读：本文先用统一抽象建立整体图景，01 深入 ring 这条路径（CP 的算法核心），02 介绍实现更直接的 Ulysses，03 跳出单一算法、以负载均衡的维度为线索调研长上下文训练的一批工作，04 落到 Megatron 的工程细节（含 dynamic CP 的代码对应），之后可读 05/06 对照 sparse 与 linear CP，最后通过 lab 亲手实现 dense softmax 的两条路径。
 
 ## 参考代码
 

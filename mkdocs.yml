@@ -25,6 +25,7 @@ nav:
               - linear 路线（四）：KDA 与 Kimi Linear: attention/mechanisms/09_linear_kda_kimi.md
               - gated attention: attention/mechanisms/10_gating.md
               - hybrid：层比例与 NoPE: attention/mechanisms/11_hybrid.md
+              - YOCO 与跨层 KV: attention/mechanisms/12_cross_layer_kv_yoco.md
           - FlashAttention:
               - attention/fa/README.md
               - IO-awareness 与 online softmax: attention/fa/01_io_awareness_online_softmax.md
@@ -74,8 +75,8 @@ nav:
           - DP:
               - parallel/01_dp/README.md
               - Megatron DDP: parallel/01_dp/01_ddp_and_overlap.md
-              - ZeRO: parallel/01_dp/02_zero_and_distributed_optimizer.md
-              - FSDP: parallel/01_dp/03_fsdp.md
+              - ZeRO 1 / 2 / 3: parallel/01_dp/02_zero_and_distributed_optimizer.md
+              - FSDP1 / FSDP2: parallel/01_dp/03_fsdp.md
           - TP / SP:
               - parallel/02_tp_sp/README.md
               - Linear layers: parallel/02_tp_sp/01_linear_layers.md
@@ -93,6 +94,8 @@ nav:
               - Ulysses A2A: parallel/04_cp/02_ulysses_a2a.md
               - 长文负载均衡: parallel/04_cp/03_long_ctx_load_balance.md
               - Megatron-LM 实现: parallel/04_cp/04_megatron_cp_integration.md
+              - Sparse attention CP: parallel/04_cp/05_sparse_attention_cp.md
+              - Linear attention CP / KCP: parallel/04_cp/06_linear_attention_kcp.md
           - EP:
               - parallel/05_ep/README.md
               - Router / preprocess: parallel/05_ep/01_router_and_preprocess.md
@@ -120,6 +123,7 @@ nav:
           - Scheduling / overlap: serving/06_scheduling_parallelism_and_overlap.md
           - Multimodal serving: serving/07_multimodal_serving.md
           - Benchmark / production: serving/08_benchmarking_and_production.md
+          - DeepInfer 推理策略: serving/09_deepinfer.md
       - 后训练:
           - post_train/README.md
           - Algorithm:
@@ -282,6 +286,9 @@ extra:
     deepep:
       url: https://github.com/deepseek-ai/DeepEP
       commit: d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb
+    deepinfer:
+      url: https://github.com/deepseek-ai/DeepInfer
+      commit: 553741557a57df44a46fb3ab72b6aafeaf945337
     deepgemm:
       url: https://github.com/deepseek-ai/DeepGEMM
       commit: 88965b078186ee7510ab9fc4f1d5ebc19adfa8d1
@@ -290,7 +297,7 @@ extra:
       commit: 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
     fla:
       url: https://github.com/fla-org/flash-linear-attention
-      commit: 81091cc6d71695e5a23e739f03bbd2fc627b72d4
+      commit: 1b74d1e0a71070d642b47385f86b86cc45d56324
     flash-attention:
       url: https://github.com/Dao-AILab/flash-attention
       commit: fb02fc8b56413e647b7060418b537858d6175d89

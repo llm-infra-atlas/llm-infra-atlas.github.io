@@ -1,0 +1,77 @@
+[
+  {
+    "file": "arxiv/2101.03961_switch_arch.png",
+    "title": "Switch Transformer routing: router sends each token to expert FFNs",
+    "source": "https://arxiv.org/abs/2101.03961",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "7db71ad0340a9a002c8bb0110a5ebf8397832919d83a1b1e7a9892638f8e5d52",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2101.03961",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/parallel/05_ep/01_router_and_preprocess.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2412.19437_basic_arch.png",
+    "title": "DeepSeek-V3 basic architecture: MLA + DeepSeekMoE with shared + routed experts",
+    "source": "https://arxiv.org/abs/2412.19437",
+    "image_url": "https://arxiv.org/html/2412.19437v2/basic_arch.png",
+    "retrieved": null,
+    "sha256": "b28eb03ebdcfaa37139cc5ab9162369f61a83eda263173458249465770bfefb3",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2412.19437",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.001692
+    },
+    "references": [
+      "docs/parallel/05_ep/README.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "deepep_normal.png",
+    "title": "DeepEP normal kernel 的 CPU wait 与 overlap",
+    "source": "https://github.com/deepseek-ai/DeepEP/blob/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/docs/legacy.md",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/DeepEP/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb/figures/normal.png",
+    "retrieved": null,
+    "sha256": "cdaf96ab5e65c336fa8403a0e6bbc7d6c799817ee381ee74e6adc49ddb1082e6",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/parallel/05_ep/02_dispatch.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "eplb_example.png",
+    "title": "eplb_example",
+    "source": "https://github.com/deepseek-ai/EPLB",
+    "image_url": "https://raw.githubusercontent.com/deepseek-ai/EPLB/main/example.png",
+    "retrieved": null,
+    "sha256": "da65769930c919d3d7086853fa58016880bb17a41f15d6bcb27acfc48866a90f",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "upstream_project",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

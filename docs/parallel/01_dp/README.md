@@ -1,6 +1,6 @@
 # Data Parallelism（DP）、ZeRO 与 FSDP
 
-> DP 是最普适的一种并行：多卡各持一份完整的模型副本，各自用不同的 data shard 训练。本章顺着这个直觉往下延伸——从最朴素的 gradient all-reduce 出发，一路推到 ZeRO-1/2/3 在显存和通信之间的权衡、Megatron 的 distributed optimizer，以及 FSDP 逐层做 all-gather/reshard 的机制，并把每一步都对齐到 Megatron-LM 与 PyTorch FSDP2 的真实代码。ZeRO 到底在分片什么、通信为什么是对称的，都会先讲清楚定义，再讲工程上怎么实现。
+DP 是最普适的一种并行：多卡各持一份完整的模型副本，各自用不同的 data shard 训练。本章顺着这个直觉往下延伸——从最朴素的 gradient all-reduce 出发，一路推到 ZeRO-1/2/3 在显存和通信之间的权衡、Megatron 的 distributed optimizer，以及 FSDP 逐层做 all-gather/reshard 的机制，最后用 Megatron-LM 与 PyTorch 的实现核对这些机制。ZeRO 到底在分片什么、通信为什么是对称的，都会先讲清楚定义，再讲工程上怎么实现。
 
 ## 前置知识
 
@@ -29,7 +29,7 @@ flowchart LR
 
 问题在于，每张卡都要存下完整的参数、梯度和 optimizer states。对 Adam 加混合精度训练来说，按参数元素数 $P$ 来算，单个参数的显存账本是这样的：
 
-| 项 | 精度 | 字节/参数 |
+| 项 | 每元素字节 | 全模型字节 |
 |---|---|---|
 | 参数（bf16） | 2B | $2P$ |
 | 梯度（bf16） | 2B | $2P$ |
@@ -58,35 +58,28 @@ flowchart LR
 
 下面这张表把每一级切分的对象、每卡显存和通信量放在一起，方便对照：
 
-| | 切什么 | 每卡显存（Adam 混精） | 通信/步 | 对应实现 |
+| | 切什么 | 每卡显存（Adam 混精） | 通信/步（同精度元素量，省略有限 N 系数） | 对应实现 |
 |---|---|---|---|---|
 | **DDP** | 无（全复制） | $16P$ | all-reduce grad = **$2P$** | torch DDP, Megatron DDP (`no_shard`) |
 | **ZeRO-1** | optimizer states + master | $4P + 12P/N$ | RS grad + AG param = **$2P$** | **Megatron `DistributedOptimizer`** |
 | **ZeRO-2** | + gradients | $2P + 2P/N + 12P/N$ | RS grad + AG param = **$2P$** | DeepSpeed ZeRO-2 |
 | **ZeRO-3** | + parameters | **$16P/N$** | RS grad + 2× AG param = **$3P$** | **FSDP** (torch / Megatron-FSDP) |
 
-这里有两点值得特别记住。
+上表的显存只统计长期模型状态，通信按参数与梯度同精度、每步一次 forward/backward、ZeRO-3 在 forward 后 reshard 的理想模型统计。ZeRO 阶段描述的是状态的存储方式，不由某一次 collective 的名字决定。尤其是 reduce-scatter 后只使用梯度 shard，并不能证明完整 grad buffer 已经释放。
 
-第一点是通信量是守恒的，这也是为什么 ZeRO-1/2 几乎是「免费午餐」。DDP 的 all-reduce 在 ring 算法下的通信量是 $2P$（拆开看就是 reduce-scatter 的 $P$ 加上 all-gather 的 $P$）。ZeRO-1/2 做的事情，其实就是把这一次 all-reduce 显式拆成两步：先 reduce-scatter 梯度（$P$），再把更新后的参数 all-gather 回来（$P$），总通信量仍然是 $2P$，一点没变，但 optimizer 的显存却降到了 $12P/N$。正因为几乎不花额外代价，ZeRO-1 几乎总是应该打开——这正是 Megatron 里 `use_distributed_optimizer=True` 的含义。
+## 3. 通信量的口径
 
-第二点是 ZeRO-3/FSDP 要多付出 50% 的通信量，来换取极致的显存节省。参数也被分片之后，forward 要 all-gather 一次参数（$P$），backward 还要再 all-gather 一次（$P$），加上梯度的 reduce-scatter（$P$），总共是 $3P$，比 DDP 多了 50%。换来的收益是每卡显存降到 $16P/N$，这是在显存实在不够用、宁愿多花通信也要把模型放下时的选择。
+令 $b_p,b_g$ 分别为参数和梯度通信的每元素字节数，$c_N=(N-1)/N$。按 ring 风格模型，每个 rank 每步发送的字节数为
 
-> DDP 和 FSDP 的核心区别在于：DDP 让参数常驻显存、只通信梯度；FSDP 则把参数也分片，需要用到时才 all-gather 出来，用完就释放。ZeRO-1（也就是 Megatron 的 distributed optimizer）介于两者之间，是一个折中的选择：参数和梯度仍然常驻显存，只把开销最重的 optimizer states 切分掉，通信量和 DDP 保持一致。
+$$
+\begin{aligned}
+V_{\mathrm{DDP}}&=2c_NPb_g,\\
+V_{\mathrm{ZeRO\text{-}1/2}}&=c_NP(b_g+b_p),\\
+V_{\mathrm{ZeRO\text{-}3}}&=c_NP(b_g+2b_p).
+\end{aligned}
+$$
 
-## 3. 通信量的计算
-
-设参数总量为 $P$（按元素数计），DP 度为 $N$。在 ring 算法下，每张卡的集合通信传输量分别是：
-
-- **all-reduce**：$\frac{2(N-1)}{N}\,P \approx 2P$
-- **reduce-scatter**：$\frac{N-1}{N}\,P \approx P$
-- **all-gather**：$\frac{N-1}{N}\,P \approx P$
-
-由此可以推出：
-- DDP：1 次 all-reduce(grad) = $2P$
-- ZeRO-1/2：1 次 RS(grad) + 1 次 AG(updated param) = $P + P = 2P$ ✅ 与 DDP 等价
-- ZeRO-3/FSDP：1 次 RS(grad) + AG(param, fwd) + AG(param, bwd) = $P + P + P = 3P$（若设 `reshard_after_forward=False`，可以省掉 backward 那次 AG、退回 $2P$，但代价是 forward 之后不释放完整参数，显存会涨上去）
-
-这正是 FSDP 里 `reshard_after_forward` 开关要做的权衡：打开 reshard 省显存，关掉则省通信，03 会详细展开这一点。
+仅在参数、梯度同精度时，前两项相等，第三项为它们的 1.5 倍。若参数为 BF16、规约梯度为 FP32，比例就不同；gradient accumulation、保留参数和 activation recompute 还会改变 collective 次数。「通信量相同」也不保证耗时相同，因为 bucket 数、启动延迟与 overlap 都会改变关键路径。完整推导及具体数字见 [ZeRO](./02_zero_and_distributed_optimizer.md)。
 
 ## 4. DP 在并行体系中的位置
 
@@ -127,20 +120,20 @@ Adam 混合精度: 每参数 16 字节(全复制) → 单卡 1120 GB(!!)  ← �
 - ZeRO-1（distributed optimizer）：optimizer 部分降到 $12P/64$，约 13 GB/卡；但参数与梯度仍有 $4P$，约 280 GB，因此还需要配合 TP/PP 进一步切分。
 - ZeRO-3/FSDP：全部状态合计 $16P/64$，约 17.5 GB/卡，代价是每层 forward 都要 all-gather 该层参数。
 
-实际做 70B 规模训练时，通常是 DP(ZeRO-1) × TP × PP 的组合：先用 TP/PP 把参数量 $P$ 切小，再在此基础上用 DP 做 ZeRO-1。纯粹的 FSDP（也就是 ZeRO-3）更多出现在不想引入 TP/PP 复杂度的中等规模训练，或者 RL 场景里。
+这组数字没有计入 activation 与完整 unit 的瞬时参数。70B 既可采用 ZeRO-1 × TP × PP，也可以采用 FSDP/HSDP 或与 TP/CP 的组合；选择取决于网络、batch、序列长度与单层大小，不能由总参数量单独决定。
 
 ---
 
 ## 这组文档怎么读
 
-下面这张表列出了这组文档的分工，可以按顺序对着代码路径逐篇读下去：
+下面这张表列出阅读路径。先理解数据与状态如何分布，再看执行优化与实现对照：
 
 | 文件 | 内容 | 对应代码 |
 |---|---|---|
-| `README.md`（本文） | DP 全景：显存账本、ZeRO-1/2/3 频谱、通信量守恒、DDP↔ZeRO↔FSDP 对应、并行维度 | 配置类 |
+| `README.md`（本文） | DP 全景：显存账本、ZeRO-1/2/3 频谱、通信量口径、DDP↔ZeRO↔FSDP 对应、并行维度 | 配置类 |
 | [01 · Megatron DDP：连续 buffer 与通信 overlap](./01_ddp_and_overlap.md) | Megatron DDP：连续 grad buffer、`main_grad`/fp32 累加、bucket + `register_grad_ready` hook、`overlap_grad_reduce`、all-reduce vs reduce-scatter | `distributed_data_parallel.py`, `param_and_grad_buffer.py` |
 | [02 · ZeRO 显存账本与 Megatron DistributedOptimizer](./02_zero_and_distributed_optimizer.md) | ZeRO-1/2/3 显存账本推导；Megatron `DistributedOptimizer`：optimizer state 分片、grad reduce-scatter、param all-gather、`overlap_param_gather` | `distrib_optimizer.py`, `param_and_grad_buffer.py:351/556` |
-| [03 · FSDP（ZeRO-3）：逐层 all-gather 与 reshard](./03_fsdp.md) | FSDP = ZeRO-3：逐层 all-gather 参数→算→reshard 释放→反向再 all-gather→reduce-scatter 梯度；PyTorch FSDP2 `fully_shard` 的 unshard/reshard/post_backward、stream prefetch；Megatron-FSDP | torch FSDP2, `fsdp/` |
+| [03 · FSDP1 与 FSDP2](./03_fsdp.md) | FSDP 的 full-shard 模式：逐层 all-gather 参数→算→reshard 释放→反向再 all-gather→reduce-scatter 梯度；PyTorch FSDP2 `fully_shard` 的 unshard/reshard/post_backward、stream prefetch；Megatron-FSDP | torch FSDP2, `fsdp/` |
 | [[atlas:docs/parallel/01_dp/dp_lab.ipynb]] | 纯 torch 手写 **DDP / ZeRO-1 / ZeRO-3(FSDP)** 三种，用 gloo 本地多进程跑通 all-reduce / reduce-scatter / all-gather，逐元素对齐单进程 reference | —— |
 
 读的顺序建议是：先读本文建立显存账本和 ZeRO 频谱的整体框架，再看 01 里 DDP 的 bucket 与 overlap 工程实现，然后是 02 的 optimizer state 分片，接着 03 讲 FSDP 如何把参数也分片，最后动手做一遍 lab，把三种方式都亲手实现一遍。

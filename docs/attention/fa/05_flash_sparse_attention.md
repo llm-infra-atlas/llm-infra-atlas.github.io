@@ -2,7 +2,7 @@
 
 > 稀疏 attention 的选点机制属于机制侧的内容，本篇只讲选完之后 kernel 怎么算得快：同一套 tiling 与 online softmax，如何适配不规则 gather 的 KV 集合。阅读本篇需要 [01 · IO-awareness、online softmax 与 tiling](./01_io_awareness_online_softmax.md)（tiling、online softmax、LSE）与 [04 · FA4（CuTeDSL）与工程接口](./04_fa4_cutedsl_and_api.md) §4（`cu_seqlens` / varlen）作为前置；机制侧的数学见 [03 · sparse 路线（一）：静态稀疏与推理期动态稀疏](../mechanisms/03_sparse_static.md)–[`05`](../mechanisms/05_sparse_dsa_frontier.md)。
 >
-> 对照代码：上游固定版本 [[fla:]] 的 [[fla:fla/ops/nsa/]]、[[fla:fla/ops/moba/]]、[[fla:fla/ops/dsa/]]（commit `81091cc6`）；滑动窗口落在 [[flash-attention:]]。DSA 的生产 kernel **不在 `fla`**，见 §4。
+> 对照代码：上游固定版本 [[fla:]] 的 [[fla:fla/ops/nsa/]]、[[fla:fla/ops/moba/]]、[[fla:fla/ops/dsa/]]（commit `1b74d1e0`）；滑动窗口落在 [[flash-attention:]]。DSA 的生产 kernel **不在 `fla`**，见 §4。
 
 ---
 
@@ -32,14 +32,17 @@ NSA / CSA 的滑窗分支直接调用这条路径，不另写 kernel（§2 末�
 
 ## 2. NSA：沿 head 轴重新分块
 
-机制在 [04 · sparse 路线（二）：可训练稀疏](../mechanisms/04_sparse_trainable.md)。`fla` 的实现是 [[fla:fla/ops/nsa/parallel.py]] 的 `parallel_nsa`（[[fla:fla/ops/nsa/parallel.py#L836]]），把三个分支拼起来。
+机制在 [04 · sparse 路线（二）：可训练稀疏](../mechanisms/04_sparse_trainable.md)。`fla` 的实现是 [[fla:fla/ops/nsa/parallel.py]] 的 `parallel_nsa`（[[fla:fla/ops/nsa/parallel.py#L837]]），把三个分支拼起来。
 
 ### 2.1 GQA 与 `G ≥ 16` 的要求
 
-[[fla:fla/ops/nsa/parallel.py#L899-L900]]
+[[fla:fla/ops/nsa/parallel.py#L900-L904]]
 
 ```python
-    G = q.shape[2] // k.shape[2]
+    HQ, H = q.shape[2], k.shape[2]
+    if H == 0 or HQ % H != 0:
+        raise ValueError(f"The number of query heads ({HQ}) must be divisible by the number of key/value heads ({H}).")
+    G = HQ // H
     assert G >= 16 and (G & (G - 1)) == 0, "Group size (HQ/H) must be a power of 2 and >= 16 in NSA"
 ```
 
@@ -51,7 +54,7 @@ $G$ 是 kernel 的 tile 维：一组 Q head 被当成 $[G, d]$ 一次载入，Tr
 
 ### 2.2 编排：压缩、top-k、选择与滑窗
 
-[[fla:fla/ops/nsa/parallel.py#L909-L957]]
+[[fla:fla/ops/nsa/parallel.py#L913-L961]]
 
 ```python
     k_cmp, v_cmp = mean_pooling(k, block_size, cu_seqlens_k), mean_pooling(v, block_size, cu_seqlens_k)

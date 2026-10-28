@@ -188,15 +188,16 @@ $$
 
 第一个技巧是 **online softmax**：把「先看整行、再做 softmax」改成分块流式计算，而且在数值上完全等价（exact，不是近似）。做法是维护一个 running max $m$、running 分母 $l$、running 输出累加器 $O_i$，每来一个新的 K/V block 就做一次 rescale：
 
-```
-对第 j 个 K/V block，片上算出本块分数 S_j = Q_i·K_jᵀ：
-  m_new = max(m, rowmax(S_j))                  # 更新 running max
-  p_j   = exp(S_j − m_new)                      # 本块未归一化权重
-  l     = l·exp(m − m_new) + rowsum(p_j)        # 旧分母按比例缩小后 + 新分母
-  O_i   = O_i·exp(m − m_new) + p_j·V_j          # 旧输出按比例缩小后 + 新输出
-  m     = m_new
-遍历完所有 j： O_i ← O_i / l                     # 最后一次性归一化
-```
+对 query tile $Q_i$，令 $S_j=Q_iK_j^\top/\sqrt d+M_j$。用 $u$ 表示尚未归一化的输出累积，状态更新为
+
+$$
+\begin{aligned}
+m'&=\max(m,\operatorname{rowmax}(S_j)),&p_j&=e^{S_j-m'},\\
+\ell'&=e^{m-m'}\ell+\operatorname{rowsum}(p_j),&u'&=e^{m-m'}u+p_jV_j.
+\end{aligned}
+$$
+
+遍历完成后，$O_i=u/\ell$。指数换基同时作用于旧分母与旧分子，详见 [FlashAttention 推导](../attention/fa/01_io_awareness_online_softmax.md)。
 
 其中 $\exp(m - m_{\text{new}})$ 是一个修正因子：每当发现一个更大的 max，就把已经累积的分母 $l$ 和输出 $O_i$ 按比例缩小，从而保证最终结果和「先看到整行再做 softmax」完全等价。所以 FlashAttention 是 exact attention，并不是像 linear attention 那样的近似方法。
 

@@ -152,12 +152,15 @@ finalize_model_grads_func(...)                               # 2443
 
 先把定义式写清楚。GPT pretrain 用的是 per-token 交叉熵：对一个 micro-batch，`labels`/`logits` 的 shape 分别是 `[b, s]`/`[b, s, V]`，`loss_mask` 用来标记哪些 token 计入 loss（eod、pad 这类位置会被置为 0；labels 为什么错一位、attention mask 与 loss mask 的分工、pretrain/SFT 的 mask 组织，概念部分见 [`00`](./00_overview.md) §2，这里只讲 loss 算出来之后怎么处理与汇聚）：
 
-```
-losses   = CE(logits, labels)              # [b, s]，逐 token
-loss_sum = Σ (losses * loss_mask)          # 标量：本 micro-batch 的 token loss 总和
-num_tokens = Σ loss_mask                   # 标量：本 micro-batch 的有效 token 数
-全局 loss = Σ_all loss_sum / Σ_all num_tokens      # 按 token 加权的全局平均
-```
+设第 $r$ 个 rank、第 $a$ 个 micro-batch 的逐 token loss 为 $\ell_{r,a,t}$，有效 token mask 为 $m_{r,a,t}$。全局平均应按有效 token 总数计算：
+
+$$
+L_{r,a}^{\mathrm{sum}}=\sum_t m_{r,a,t}\ell_{r,a,t},\qquad
+n_{r,a}=\sum_t m_{r,a,t},\qquad
+\mathcal L=\frac{\sum_{r,a}L_{r,a}^{\mathrm{sum}}}{\sum_{r,a}n_{r,a}}.
+$$
+
+其中 $\ell$ 来自逐 token cross-entropy；最后一步不是对不同 token 数的局部均值做等权平均。
 
 [[megatron-lm:pretrain_gpt.py#L121-L180]] 里的 `loss_func` 返回的正是 `(loss_sum, num_tokens, {'lm loss': cat([loss_sum, num_tokens])})` 这样一个三元组——分子和分母是分开传递的，不在本地就直接相除。
 

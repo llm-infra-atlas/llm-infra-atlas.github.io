@@ -37,41 +37,60 @@ DDPM（[Ho et al. 2020, arXiv:2006.11239](https://ar5iv.labs.arxiv.org/html/2006
 
 前向过程用一张固定的方差表 `β_1..β_T`，把数据一步步推向纯高斯噪声：
 
-```
-q(x_t | x_{t-1}) = N(x_t ; √(1-β_t)·x_{t-1}, β_t·I)            (Eq.2)
-```
+$$
+q(x_t\mid x_{t-1})=\mathcal N\!\left(x_t;\sqrt{1-\beta_t}\,x_{t-1},\beta_t I\right).
+$$
+
+对应原论文 Eq. 2。
 
 记 `α_t = 1-β_t`，`ᾱ_t = ∏_{s≤t} α_s`，就可以得到一个闭式的跳步公式——在训练时非常关键，因为它允许从 $x_0$ 一步直接采样到任意时刻 $t$：
 
-```
-x_t = √ᾱ_t · x₀ + √(1-ᾱ_t) · ε,    ε ~ N(0, I)               (Eq.4)
-```
+$$
+x_t=\sqrt{\bar\alpha_t}\,x_0+\sqrt{1-\bar\alpha_t}\,\epsilon,
+\qquad \epsilon\sim\mathcal N(0,I).
+$$
+
+对应 Eq. 4，其中 $\alpha_t=1-\beta_t$，$\bar\alpha_t=\prod_{s=1}^t\alpha_s$。
 
 这里的 shape 和语义需要先说清楚：`x_t` 和原始数据同形（可以是一张图，也可以是一块 latent）；`ε` 是同形状的高斯噪声；`ᾱ_t ∈ (0,1]` 是单调递减的，当 `t→T` 时 `ᾱ_t→0`，也就是说 `x_T` 已经近似于纯噪声。
 
 反向过程则是要学一个去噪器，把噪声一步步还原成数据：
 
-```
-p_θ(x_{t-1} | x_t) = N(x_{t-1} ; μ_θ(x_t, t), Σ_θ)            (Eq.1)
-```
+$$
+p_\theta(x_{t-1}\mid x_t)=\mathcal N\!\left(x_{t-1};\mu_\theta(x_t,t),\Sigma_\theta(x_t,t)\right).
+$$
+
+对应 Eq. 1。
 
 DDPM 的一个关键参数化选择是：不直接回归均值，而是让网络 `ε_θ(x_t, t)` 去预测当初加进去的那个噪声 `ε`，于是
 
-```
-μ_θ = (1/√α_t)·( x_t − β_t/√(1-ᾱ_t) · ε_θ(x_t, t) )          (Eq.11)
-```
+$$
+\mu_\theta(x_t,t)=\frac{1}{\sqrt{\alpha_t}}
+\left(x_t-\frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\epsilon_\theta(x_t,t)\right).
+$$
+
+对应 Eq. 11。
 
 这样一来，训练目标就塌缩成了一个非常简单的噪声回归 MSE，这也是工程上真正在跑的 loss：
 
-```
-L_simple = E_{t, x₀, ε} [ ‖ ε − ε_θ( √ᾱ_t·x₀ + √(1-ᾱ_t)·ε , t ) ‖² ]    (Eq.14)
-```
+$$
+\mathcal L_{\mathrm{simple}}=
+\mathbb E_{t,x_0,\epsilon}\left[
+\left\|\epsilon-\epsilon_\theta\!\left(
+\sqrt{\bar\alpha_t}x_0+\sqrt{1-\bar\alpha_t}\epsilon,t
+\right)\right\|_2^2\right].
+$$
+
+对应 Eq. 14。
 
 从算力账本的角度看，训练阶段只需要对随机采样的 `t` 跑一遍 `ε_θ`（采一个 t、加噪、预测、算 MSE）就够了。真正贵的是采样阶段——按照 Eq.11 的公式，要从 `x_T` 一步步走到 `x₀`，需要跑 T 遍（原版是 1000 遍）`ε_θ`（对应 Alg.2）：
 
-```
-x_{t-1} = (1/√α_t)·( x_t − (1-α_t)/√(1-ᾱ_t)·ε_θ(x_t,t) ) + σ_t·z      (Alg.2 采样)
-```
+$$
+x_{t-1}=\frac{1}{\sqrt{\alpha_t}}
+\left(x_t-\frac{1-\alpha_t}{\sqrt{1-\bar\alpha_t}}\epsilon_\theta(x_t,t)\right)+\sigma_t z.
+$$
+
+对应 Algorithm 2；通常 $z\sim\mathcal N(0,I)$，最后一步不再添加噪声。
 
 这正是 [README §0](./README.md) 里「generator 一次请求跑 20 到 1000 遍」这句话的出处：采样过程就是串行执行 N_steps 次去噪网络的 forward。`ε_θ` 本身是一个双向网络（U-Net 或者 DiT），每一步都要对全部 latent token 重新计算一遍，步与步之间没有任何可以复用的中间结果。
 
@@ -81,11 +100,17 @@ x_{t-1} = (1/√α_t)·( x_t − (1-α_t)/√(1-ᾱ_t)·ε_θ(x_t,t) ) + σ_t·z
 
 Song et al.（[arXiv:2011.13456](https://ar5iv.labs.arxiv.org/abs/2011.13456)）把离散化的扩散过程推广到了连续时间的 SDE 上：
 
-```
-前向 SDE:        dx = f(x,t) dt + g(t) dw                       (Eq.5)
-反向 SDE:        dx = [ f − g²·∇_x log p_t(x) ] dt + g·dw̄        (Eq.6)
-probability-flow ODE: dx = [ f − ½g²·∇_x log p_t(x) ] dt        (Eq.13)
-```
+三条连续时间动力学分别为
+
+$$
+\begin{aligned}
+\mathrm{d}x&=f(x,t)\,\mathrm{d}t+g(t)\,\mathrm{d}w &&\text{forward SDE},\\
+\mathrm{d}x&=\left[f(x,t)-g(t)^2\nabla_x\log p_t(x)\right]\mathrm{d}t+g(t)\,\mathrm{d}\bar w &&\text{reverse SDE},\\
+\mathrm{d}x&=\left[f(x,t)-\tfrac12g(t)^2\nabla_x\log p_t(x)\right]\mathrm{d}t &&\text{probability-flow ODE}.
+\end{aligned}
+$$
+
+分别对应 Eq. 5、6、13；reverse SDE 的时间从终点向起点推进，$\bar w$ 为反向时间 Wiener process。
 
 这里核心的未知量是 score，也就是 `∇_x log p_t(x)`（对数密度的梯度），网络 $s_\theta$ 要学习的正是它。score 和 noise 之间可以互相换算（这一段连接了两套语言，出自 Luo 的 tutorial [arXiv:2208.11970](https://arxiv.org/abs/2208.11970) 以及 Yang Song 的博客，而不是 SDE 的原始论文）：
 
@@ -101,10 +126,16 @@ VP-SDE 离散化之后就是 DDPM（Eq.11 已经给出了对应关系）。从 i
 
 文生图任务要求生成结果服从某个条件 `c`（通常是文本 prompt）。CFG（[Ho & Salimans 2022, arXiv:2207.12598](https://ar5iv.labs.arxiv.org/html/2207.12598)）的做法是：训练时以概率 `p_uncond` 把条件丢成空集 ∅，让网络既学会有条件生成，也学会无条件生成；采样时再把这两者外推组合起来：
 
-```
-ε̃_θ(x_t, c) = (1+w)·ε_θ(x_t, c) − w·ε_θ(x_t, ∅)             (Eq.6)
-等价实现:    ε̂ = ε_θ(∅) + s·( ε_θ(c) − ε_θ(∅) ),  s = 1+w
-```
+$$
+\begin{aligned}
+\widetilde\epsilon_\theta(x_t,c)
+&=(1+w)\epsilon_\theta(x_t,c)-w\epsilon_\theta(x_t,\varnothing)\\
+&=\epsilon_\theta(x_t,\varnothing)
++s\left[\epsilon_\theta(x_t,c)-\epsilon_\theta(x_t,\varnothing)\right],\qquad s=1+w.
+\end{aligned}
+$$
+
+对应 Eq. 6；第二行是常见实现使用的 guidance scale 约定。
 
 （Stable Diffusion 默认的 guidance scale 是 `s=7.5`，对应 `w=6.5`。）
 
@@ -116,9 +147,15 @@ VP-SDE 离散化之后就是 DDPM（Eq.11 已经给出了对应关系）。从 i
 
 DDPM 原始的 1000 步采样实在太慢。DDIM（[Song et al. 2020, arXiv:2010.02502](https://ar5iv.labs.arxiv.org/html/2010.02502)）基于 probability-flow ODE 的思想，给出了一种非马尔可夫、且可以做成完全确定性的采样方式：
 
-```
-x_{t-1} = √α_{t-1}·(predicted x₀) + √(1-α_{t-1}-σ_t²)·ε_θ(x_t,t) + σ_t·ε     (Eq.12)
-```
+沿用本文的 cumulative $\bar\alpha$ 记号，DDIM 的一步更新为
+
+$$
+x_{t-1}=\sqrt{\bar\alpha_{t-1}}\,\widehat x_0
++\sqrt{1-\bar\alpha_{t-1}-\sigma_t^2}\,\epsilon_\theta(x_t,t)
++\sigma_t\epsilon.
+$$
+
+对应原论文 Eq. 12；DDIM 论文把 cumulative quantity 直接写成 $\alpha$，此处加横线以免与 DDPM 的单步 $\alpha_t$ 混淆。
 
 这里有一个容易踩的记号陷阱：DDIM 论文里裸写的 `α_t` 实际上对应的是 DDPM 里的 `ᾱ_t`（也就是累乘后的值），而不是单步的 `α_t`。引用的时候一定要注意对齐。
 
@@ -136,11 +173,17 @@ x_{t-1} = √α_{t-1}·(predicted x₀) + √(1-α_{t-1}-σ_t²)·ε_θ(x_t,t) +
 
 > 图：扩散过程发生在 VAE 的 latent 上；条件经过 $\tau_\theta$ 变成 K/V，U-Net 的各层用 cross-attention 把条件注入进去。像素空间只负责编码和解码，去噪本身的算力会随着下采样因子 $f^2$ 大幅降低。（Rombach et al. 2022, Fig 3；[arXiv:2112.10752](https://arxiv.org/abs/2112.10752)）
 
-```
-z = E(x),  downsample f=8:   512×512×3  ──►  64×64×4   (latent)
-条件 loss:  L = E[ ‖ ε − ε_θ(z_t, t, τ_θ(y)) ‖² ]                 (Eq.3)
-条件注入(cross-attn):  Q = W_Q·φ(z_t),  K = W_K·τ_θ(y),  V = W_V·τ_θ(y)
-```
+encoder 把图像映射为 $z=E(x)$。例如下采样倍率 8 时，shape 从 `[512, 512, 3]` 变成 `[64, 64, 4]`。条件训练目标与 cross-attention projection 分别为
+
+$$
+\mathcal L=\mathbb E\left[\|\epsilon-\epsilon_\theta(z_t,t,\tau_\theta(y))\|_2^2\right],
+$$
+
+$$
+Q=W_Q\phi(z_t),\qquad K=W_K\tau_\theta(y),\qquad V=W_V\tau_\theta(y).
+$$
+
+第一式对应 Eq. 3；projection 沿用该图的列向量布局。
 
 latent 比像素空间小 $f^2=64$ 倍，扩散网络（U-Net）需要的算力也随之下降了两个数量级——这正是文生图能够真正跑起来的工程关键。文本条件 `y` 经过一个 text encoder $\tau_\theta$（Stable Diffusion 用的是冻结的 CLIP ViT-L/14）变成 K/V，再由 U-Net 各层的 cross-attention 注入。这里值得留意的是：这个用来注入条件的 cross-attention，和 [`04`](./04_fusion_and_connectors.md) 里讲的融合用的 cross-attn，其实是同一种机制，都是把条件信息接进模型的通用工具。
 
@@ -172,11 +215,19 @@ flow matching（[arXiv:2210.02747](https://ar5iv.labs.arxiv.org/html/2210.02747)
 
 > 图：flow matching 学习一个速度场，把噪声分布搬运到数据分布。当路径接近直线时，ODE 积分所需的步数可以变得很少——这正是把 $N_{\mathrm{steps}}$ 从几十步压缩到个位数的理论入口。（Lipman et al. 2023, Fig 1；[arXiv:2210.02747](https://arxiv.org/abs/2210.02747)）
 
-```
-插值路径(SD3 取向: 数据在 t=0, 噪声在 t=1):   x_t = (1-t)·x₀ + t·x₁
-目标速度场:                                  v = x₁ − x₀  (常向量, 直线!)
-CFM 目标:                                    L = E‖ v_t(x) − u_t(x|x₁) ‖²        (Eq.9)
-```
+采用数据位于 $t=0$、噪声位于 $t=1$ 的约定：
+
+$$
+x_t=(1-t)x_0+tx_1,\qquad
+u_t(x_t\mid x_0,x_1)=x_1-x_0,
+$$
+
+$$
+\mathcal L_{\mathrm{CFM}}=
+\mathbb E_{t,x_0,x_1}\left[\|v_\theta(x_t,t)-(x_1-x_0)\|_2^2\right].
+$$
+
+条件路径的目标速度是常向量；网络学习的是给定当前位置与时间时的速度场，采样沿反向时间积分。
 
 这里也有一个取向约定需要注意：Lipman 和 Liu 的原始论文把数据放在 t=1 这一端，而 SD3 反过来，把数据放在 t=0、噪声放在 t=1，所以对应的 `v = x₁ − x₀`。引用时要留意方向是否一致。
 

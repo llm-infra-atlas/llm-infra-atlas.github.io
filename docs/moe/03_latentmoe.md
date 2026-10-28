@@ -71,13 +71,13 @@ router 仍然输出 $E'$ 维（$E' = \alpha E$，K3 中为 896），logits 的 s
 
 论文给出两个同构变体，区别只在于 top-k 是否随 $\alpha$ 一起放大：
 
-```
-α = H / ℓ
-E' = α · E
+令宽度压缩比为 $\alpha=H/\ell$，expert 数扩展为 $E'=\alpha E$。两种预算分配为
 
-ℓ-MoE_eff :  k' = k      → 通信、权重加载都 ÷α，精度对齐基线（更便宜）
-ℓ-MoE_acc :  k' = α · k  → 通信、权重加载对齐基线，精度更高（推荐）
-```
+$$
+k'=\begin{cases}k,&\ell\text{-MoE}_{\mathrm{eff}},\\\alpha k,&\ell\text{-MoE}_{\mathrm{acc}}.\end{cases}
+$$
+
+前者按论文的对应配置减少通信和权重加载，后者把节省的宽度预算用于增加激活 expert 数。精度是否对齐或提升是实验结论，不由维度关系单独保证。
 
 | | 通信 / GPU | 每 expert 权重加载 | 精度 | 推理成本 |
 |---|---|---|---|---|

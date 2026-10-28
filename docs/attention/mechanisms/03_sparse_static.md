@@ -6,27 +6,98 @@
 
 ---
 
+## 0. Sparse attention 的数学定义
+
+Sparse attention 先为 query $i$ 确定可见 key 集合 $\mathcal I_i$，再在这个集合内重新归一化。记 $s_{ij}=q_i^\top k_j/\sqrt d$，则
+
+$$
+p^{\mathrm{sp}}_{ij}=
+\begin{cases}
+\displaystyle\frac{e^{s_{ij}}}{\sum_{k\in\mathcal I_i}e^{s_{ik}}},&j\in\mathcal I_i,\\
+0,&j\notin\mathcal I_i,
+\end{cases}
+\qquad
+o_i^{\mathrm{sp}}=\sum_{j\in\mathcal I_i}p^{\mathrm{sp}}_{ij}v_j.
+$$
+
+这里的集合必须非空，并且在 autoregressive 模型中满足 $\mathcal I_i\subseteq\{1,\ldots,i\}$。实现上等价于在 softmax **之前**给未选中位置加 $-\infty$，而不是对 dense softmax 的结果直接置零。后者没有重新归一化，会改变输出尺度。
+
+### 稀疏化误差由什么决定
+
+为了只考察某一层、固定 Q/K/V 下的变化，设 dense attention 在被丢弃位置上的概率质量为
+
+$$
+\varepsilon_i=\sum_{j\notin\mathcal I_i}p_{ij}.
+$$
+
+当 $0<\varepsilon_i<1$ 时，把保留与丢弃部分各自归一化，得到 $o_i^{\mathrm{keep}}$ 与 $o_i^{\mathrm{drop}}$。于是
+
+$$
+o_i=(1-\varepsilon_i)o_i^{\mathrm{keep}}+\varepsilon_i o_i^{\mathrm{drop}},
+\qquad
+o_i^{\mathrm{sp}}-o_i=\varepsilon_i(o_i^{\mathrm{keep}}-o_i^{\mathrm{drop}}).
+$$
+
+若每个 value 的 norm 至多为 $V_{\max}$，由三角不等式可得
+
+$$
+\|o_i^{\mathrm{sp}}-o_i\|\le 2\varepsilon_iV_{\max}.
+$$
+
+这是一个局部分析：少选多少 token 并不直接决定误差，丢掉多少概率质量以及 value 的差异更关键。它也不保证多层网络的最终误差小，因为后续层的 Q/K/V 会随输出变化。原生稀疏训练则是在新的可见集合下学习，本来就不是事后逼近某个固定 dense checkpoint。
+
+### 计算量、选择成本与缓存
+
+若每行平均选 $k$ 个 key，主 attention 计算约为 $O(Nkd)$。但若 selector 仍给所有 query-key 对打分，其成本可能是 $O(N^2d_{\mathrm{idx}})$；$d_{\mathrm{idx}}$ 较小只能降低系数，不能把整体严格变成线性。只有固定局部模式、分层候选集等额外结构才能进一步限制选取成本。
+
+KV cache 也不一定减少：动态 top-k 今天没选中的 token，明天仍可能被选中，因此通常还需保存其 KV。永久淘汰、固定窗口、压缩 KV 是不同操作，不能由「主 attention 稀疏」直接推出「缓存为常数」。
+
+对 block-sparse，设块大小为 $B$，query 选 $r$ 个块，则实际参与计算的 key 约为 $rB$ 个。较大 block 方便连续访存和 Tensor Core，但可能为少量有用 token 带入许多无关 token；更细粒度则增加索引、gather 和小任务成本。下一篇的 NSA/MoBA 就在这一取舍上做设计。
+
+### Backward 与离散选择
+
+固定可见集合后，反向公式与 dense softmax 相同，只把梯度限制在保留边上：
+
+$$
+(\nabla_S\mathcal L)_{ij}=p^{\mathrm{sp}}_{ij}
+\left(\langle\nabla_{o_i}\mathcal L,v_j\rangle
+-\langle\nabla_{o_i}\mathcal L,o_i^{\mathrm{sp}}\rangle\right),
+\quad j\in\mathcal I_i.
+$$
+
+top-k 的离散索引本身通常没有普通梯度。selected Q/K/V 可以接收主 loss 梯度，并不表示 selector 已自动得到充分训练信号。辅助蒸馏、可微 compression 分支和选择分数设计因此成为[可训练稀疏](./04_sparse_trainable.md)的核心。FlashAttention 可精确计算给定 sparse mask 下的 softmax；它的 exact 不表示 sparse 结果等于原来的 dense 结果。
+
 ## 1. sliding window：最朴素的稀疏
 
-sliding window attention（SWA）的规则很简单：query $i$ 只 attend $[i-W, i]$ 这个窗口内的位置，超出窗口的一律不看。
+sliding window attention（SWA）的规则很简单：query $i$ 只 attend $[\max(1,i-W+1), i]$ 这最多 $W$ 个位置，超出窗口的一律不看。
 
-![左：vanilla causal attention。中：sliding window（W=3），只保留对角带。右：effective context length —— 堆 `k` 层之后信息能传播 `W·k` 个 token](assets/arxiv/2310.06825_sliding_window.png)
+![Mistral sliding window 的连接与跨层感受野](assets/arxiv/2310.06825_sliding_window.png)
 
-> 图：Mistral 7B 论文的 SWA 图（Jiang et al. 2023, Fig 1；[arXiv:2310.06825](https://arxiv.org/abs/2310.06825)）。**右图是理解这个机制的关键**：单层 SWA 只看 `W` 个 token，但第 `k` 层的位置 `i` 会通过第 `k−1` 层看到 `[i−W, i]`，再通过第 `k−2` 层看到 `[i−2W, i]`，如此层层递推，信息就以每层 `W` 的速度向前传播。Mistral 一共 32 层、`W=4096`，理论感受野可以达到 **≈131K**。
+> 图：Mistral 7B 论文的 SWA 图（Jiang et al. 2023, Fig. 1；[论文](https://arxiv.org/abs/2310.06825)）。左侧为 causal full attention，中间为局部窗口，右侧展示局部连接怎样逐层传播信息。
+
+按本文「窗口包含当前位置」的约定，堆叠 $k$ 层后，位置 $i$ 的可达范围为 $[\max(1,i-k(W-1)),i]$，理论感受野宽度至多为
+
+$$
+R_k=1+k(W-1).
+$$
+
+32 层、窗口 4096 对应约 131K token 的可达范围；这不等于模型能精确检索其中每个原始 token。
 
 Mistral 7B 的具体配置和收益是这样的：$W = 4096$；配合 **rolling buffer cache**，也就是一个固定大小 $W$ 的环形缓冲，timestep $i$ 的 K/V 存在槽位 $i \bmod W$ 里；32K 序列下 cache 内存降低 **8 倍**且质量无损；FlashAttention/xFormers 侧的相应改动还带来了 16K 长度下 **2 倍**的加速。
 
-这里有一个值得记住的性质：SWA 是本章唯一一个**KV cache 总量存在上界**的静态方案。
+这里有一个值得记住的性质：若模型所有层都采用固定窗口，则 KV cache 的大小存在与序列长度无关的上界；固定数量 sink 加窗口也具有这一性质。
 
-```
-SWA 的 KV cache 总元素 = 2·h_kv·d_h · 层数 · min(N, W)     ← 与 N 解耦（封顶在 W）
-```
+设层数为 $L$，每层有 $h_{kv}$ 个 KV heads，K/V 的 head dimension 同为 $d_h$，单请求 cache 的元素数为
 
-正因为这个性质，它在 [Attention 机制](./README.md) §7 的表里独占一行：不是 $O(1)$，但是 $O(W)$。
+$$
+C_{\mathrm{SWA}}=2Lh_{kv}d_h\min(N,W).
+$$
+
+因此，忽略层数与 head shape 时，cache 对窗口宽度为 $O(W)$；固定 $W$ 后，它相对于序列长度 $N$ 为 $O(1)$。复杂度必须说明哪个量在增长，见 [Attention 机制](./README.md) §7。
 
 ## 2. attention sink：头几个 token 为什么不能丢
 
-如果只保留最近 $W$ 个 token（也就是纯滑窗、不做重算），perplexity 会直接**爆炸**。StreamingLLM（[arXiv:2309.17453](https://arxiv.org/abs/2309.17453)）找到了这背后的原因，而且原因完全来自 softmax 的代数性质，和内容无关。
+对原本按 dense attention 训练的模型，在推理时直接删去窗口外 KV，可能导致 perplexity 急剧恶化。这与从头训练的 SWA 模型不同。StreamingLLM（[arXiv:2309.17453](https://arxiv.org/abs/2309.17453)）找到了这背后的原因，softmax 归一化约束提供了一种解释，但 sink 的位置与强度还取决于训练得到的表示，不能仅由分母为正推导出全部现象。
 
 ![四种方案对比：(a) dense（O(N²)、超出训练长度就崩）(b) window（PPL 5158，崩）(c) sliding with re-computation（PPL 5.43 但 O(N·W²)）(d) StreamingLLM = 4 个 sink + rolling window（PPL 5.40，O(N·W)）](assets/arxiv/2309.17453_streamingllm.png)
 
@@ -83,6 +154,11 @@ def streaming_llm_cache(k_pre_rope, v, n_sink=4, window=1020):
 其余的实测数字：相对 sliding-window-with-recomputation 有 `22.2 倍` 的加速；在 Llama-2/MPT/Falcon/Pythia 上可以跑到 4M token；如果**预训练时就加一个可学习的 sink token，之后只需要 1 个 sink 就够**（普通做法需要 4 个）。这条建议后来被 GPT-OSS 和 DeepSeek-V4 以 learned sink logit 的形式真正落地（[`02`](./02_position_and_stability.md) §5.5）。
 
 ## 3. pattern taxonomy：Longformer 与 BigBird
+
+![Longformer 的 global 与 sliding window 模式](assets/arxiv/2004.05150_longformer_patterns.png)
+
+图源：[Longformer Fig. 2(d)](https://arxiv.org/abs/2004.05150)。对角带表示局部连接，整行/整列表示 global token。原图是双向 attention；用于 causal LM 时还需与下三角 mask 相交，不能照搬整行的未来连接。
+
 
 在「按内容动态选择」这一类方法出现之前，静态 pattern 的设计空间已经被 Longformer 和 BigBird 这两篇论文基本穷举过了。
 

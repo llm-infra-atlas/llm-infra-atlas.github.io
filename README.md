@@ -50,7 +50,7 @@
 | --- | --- |
 | [并行策略](docs/parallel/README.md) | DP/ZeRO/FSDP、TP/SP、PP、CP、EP 的全流程逻辑，每个维度都配一个可运行的 lab |
 | [训练系统](docs/train/README.md) | 一个训练 iteration 的完整生命周期：train loop、optimizer、checkpoint、dataloader、buffer、activation recompute/offload、显存模型 |
-| [推理服务](docs/serving/README.md) | prefill/decode 与 SLO、continuous batching、PagedAttention、分层 KV cache、P/D 分离、调度和 overlap、多模态 serving |
+| [推理服务](docs/serving/README.md) | prefill/decode 与 SLO、continuous batching、PagedAttention、分层 KV cache、P/D 分离、调度和 overlap、多模态 serving，以及 [DeepInfer 的推理策略](docs/serving/09_deepinfer.md) |
 | [后训练](docs/post_train/README.md) | CPT/SFT 与 PPO/GRPO 家族等算法，以及 rollout–train 系统设计、训推一致性、agentic RL |
 | [低精度](docs/low_precision/README.md) | 从 FP8 到 FP4：数值格式与 scaling 粒度、DeepSeek 在 Hopper 上的 FP8 训练方案、Blackwell 原生 FP4/FP8 支持 |
 | [Agent](docs/agent/README.md) | Agent 的定义与循环、经典工作、DeepSeek Harness、process sandbox 与 microVM |
@@ -75,10 +75,10 @@
 | 项目 | 上游仓库 | 对照什么 |
 | --- | --- | --- |
 | Megatron-LM | [NVIDIA/Megatron-LM @ e03878b5](https://github.com/NVIDIA/Megatron-LM/tree/e03878b5ffc2698ed1d63fc2ec434cb2b5f122e2) | 训练框架：TP/PP/SP/EP、DistOpt、checkpoint |
-| SGLang / vLLM | [sglang @ 1a5775a9](https://github.com/sgl-project/sglang/tree/1a5775a9df3069574109a22d00d167269fe9c0ff) / [vLLM @ 156b1266](https://github.com/vllm-project/vllm/tree/156b12667cf5fbb93914f3646acc25dca378b420) | 推理服务：调度、KV cache、P/D 分离 |
+| SGLang / vLLM / DeepInfer | [sglang @ 1a5775a9](https://github.com/sgl-project/sglang/tree/1a5775a9df3069574109a22d00d167269fe9c0ff) / [vLLM @ 156b1266](https://github.com/vllm-project/vllm/tree/156b12667cf5fbb93914f3646acc25dca378b420) / [DeepInfer @ 55374155](https://github.com/deepseek-ai/DeepInfer/tree/553741557a57df44a46fb3ab72b6aafeaf945337) | 推理服务：调度、KV cache、P/D 与 EPD 分离、Attention DP / Wide EP、bounded replay |
 | Mooncake / LMCache | [Mooncake @ f90ae691](https://github.com/kvcache-ai/Mooncake/tree/f90ae691f109e49a60920e0c8abbf7e572826d8c) / [LMCache @ 09bc14c0](https://github.com/LMCache/LMCache/tree/09bc14c0a5fd6eec9afc3634f8f726f5249febf7) | KVCache-centric serving / 分层 KV cache |
 | DeepEP / DeepGEMM | [DeepEP @ d4f41e4e](https://github.com/deepseek-ai/DeepEP/tree/d4f41e4e93602a15e95f55f6ee8df8f1aaa0e4bb) / [DeepGEMM @ 88965b07](https://github.com/deepseek-ai/DeepGEMM/tree/88965b078186ee7510ab9fc4f1d5ebc19adfa8d1) | MoE all-to-all / FP8 grouped GEMM |
-| FlashAttention / FLA | [flash-attention @ fb02fc8b](https://github.com/Dao-AILab/flash-attention/tree/fb02fc8b56413e647b7060418b537858d6175d89) / [fla @ 81091cc6](https://github.com/fla-org/flash-linear-attention/tree/81091cc6d71695e5a23e739f03bbd2fc627b72d4) | attention kernel / 线性·稀疏 attention |
+| FlashAttention / FLA | [flash-attention @ fb02fc8b](https://github.com/Dao-AILab/flash-attention/tree/fb02fc8b56413e647b7060418b537858d6175d89) / [fla @ 1b74d1e0](https://github.com/fla-org/flash-linear-attention/tree/1b74d1e0a71070d642b47385f86b86cc45d56324) | attention kernel / 线性·稀疏 attention 与 CP |
 | slime / checkpoint-engine | [slime @ 41014d1f](https://github.com/THUDM/slime/tree/41014d1f29e201137fdffce737bb8bac65bc5219) / [checkpoint-engine @ d1de07b3](https://github.com/MoonshotAI/checkpoint-engine/tree/d1de07b3aacff34050d09c3efa093f9a2fcdcf73) | RL 后训练 / serving 侧在线权重更新 |
 | DeepSeek Harness / AgentENV | [deepseek-harness @ 99f6f02f](https://github.com/deepseek-ai/deepseek-harness/tree/99f6f02fecdb7dff40c3fbc9470f5907c29f74ca) / [AgentENV @ 547c1a8a](https://github.com/kvcache-ai/AgentENV/tree/547c1a8a515382cfc2ba02cb8aeb1bd134b7327f) | Agent loop / Firecracker sandbox |
 

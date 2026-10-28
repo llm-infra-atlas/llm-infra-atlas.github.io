@@ -129,13 +129,19 @@ Skrull 把问题彻底看作一个调度问题：哪条序列进哪个 micro-bat
 
 第二层是 **DACP（Distributed-Aware CP）**，作用在 micro-batch 内部、也就是 CP group 内：把序列分成两类——distributed sequence 走正常的 CP 切分，保住长序列的处理能力；local sequence 完整放在单个 CP rank 上，彻底免除 CP 通信。两类序列在同一个 CP group 里处理，不需要额外的 GPU，而且由于两者之间没有数据依赖，distributed 序列的 CP 通信可以和 local 序列的计算天然 overlap。它的形式化直接体现了 §1.1 的张力。设 BucketSize $C$ 是每个 rank 能容纳的 token 数（显存约束的 token 化表达），$N$ 是 CP size，则：
 
-```
-min  max_j Time_j
-Time_j = max( T_comm(V), T_comp(Local_j) ) + T_comp(Dist)
-       # max 这一项就是 local 序列的计算与 distributed 序列的通信在做 overlap
-约束: 每条序列要么整体分给某个 rank（local），要么被切分（distributed）；
-      Σ local 长度 + Σ distributed 长度/N ≤ C      （每个 rank 的显存）
-```
+优化目标是最小化最慢 rank 的时间：
+
+$$
+\min\max_j T_j,\qquad
+T_j=\max\!\left(T_{\mathrm{comm}}(V),T_{\mathrm{comp}}(\mathrm{Local}_j)\right)
++T_{\mathrm{comp}}(\mathrm{Dist}).
+$$
+
+max 项表示 local 计算与 distributed 通信的 overlap。每条序列要么整体放在一个 rank，要么被分布式切分；容量约束可写为
+
+$$
+\sum_{i\in\mathrm{Local}_j}s_i+\frac1N\sum_{i\in\mathrm{Dist}}s_i\le C,\qquad\forall j.
+$$
 
 求解采用一个由三条原则指导的轻量启发式：尽量避免切分（先假设所有序列都能 local 放下）、优先均衡计算、显存不足时用 roll-back 兜底。注意 local/distributed 的分类是调度的结果，而不是按某个长度阈值一刀切：
 
@@ -165,11 +171,18 @@ for i in 1..K:                 # 短序列先放
 
 WLB-LLM 来自 Meta 内部一个 8K GPU、128K context 的生产训练任务，论文开篇实测发现最慢的 GPU 比其余 GPU 慢 1.44 倍。它的分析把 §1.1 的代价模型又推进了一步：一个 micro-batch 的总延迟可以拆成 attention 的二次项和其余所有算子的线性项，后者经实测确实随 token 数线性增长。这个分解带来一个关键洞察：**只要打破「packed 序列必须等于固定 context 窗口」的约束，就可以用多条短文档累加的线性项，去匹配一条超长文档的二次项**，让每个 GPU 拿到的不再是等数量的 token，而是等延迟的工作量。PP 级的 packing 目标仍然是 min-max 各 micro-batch 的总延迟，只是约束从「等长」换成「不超显存」：
 
-```
-min  max_j  Σ_i [ W_a(x_ij · d_i) + W_l(x_ij · d_i) ]   # W_a 是二次的 attention 项，W_l 是线性项
-s.t. 每个 doc 恰好进入一个 micro-batch；
-     Σ_i x_ij · d_i ≤ L_max        # 只受显存限制，允许超过 context window
-```
+设 $x_{ij}\in\{0,1\}$ 表示文档 $i$ 是否分入 micro-batch $j$，文档长度为 $d_i$。目标为
+
+$$
+\min_x\max_j\sum_i\left[W_a(x_{ij}d_i)+W_l(x_{ij}d_i)\right],
+$$
+
+$$
+\sum_jx_{ij}=1\quad\forall i,\qquad
+\sum_i x_{ij}d_i\le L_{\max}\quad\forall j.
+$$
+
+$W_a$ 是二次 attention 工作量，$W_l$ 是线性工作量。packing 后总长度受容量约束；各文档仍保留自己的 mask 与位置语义。
 
 这个 ILP 是 NP-hard 的，实际系统用一个极轻的贪心来逼近：文档按长度降序，逐条放进当前总工作量最小的 micro-batch，放不下就放进当前长度最小的，每 batch 的求解只要 20ms。另外还有一个配合的小机制：长度接近整个窗口的 outlier 文档先进入 FIFO 等待队列，攒满一批后每个 micro-batch 恰好分一条——这既保证了 outlier 之间的均衡，又避免了跨 batch 大窗口 repack 对数据随机性的破坏（论文实测后者会让 loss 升高 1.6%，得不偿失）。WLB-LLM 的另一半——CP group 内的 per-document sharding——见 §4.3。
 
@@ -214,13 +227,20 @@ NVIDIA 在 Megatron Core 中落地的 Dynamic CP 与前面的工作思想同源�
 
 不过这里有个容易踩的坑：既然短序列该用小 group，那朴素地把每条序列分给「能装下它的最小 group」不就行了？答案是不行——长尾分布下短序列的数量远远多于长序列，小 group 会瞬间过载，大家还是要排队等它。所以 FlexSP 把问题形式化为 min-max 各 group 完成时间的优化（论文称之为 time-balanced assignment）：枚举若干个虚拟 SP group（degree 只取 2 的幂，候选很少），决策变量是 group 启用向量和序列分配矩阵：
 
-```
-min  C                                          # 最小化最慢 group 的时间 (makespan)
-s.t. Time({s_k, A_kp}; d_p) ≤ C,     ∀p         # 各 group 的执行时间（由 cost model 给出）
-     Memory({s_k, A_kp}; d_p) ≤ E,   ∀p         # 单卡显存
-     Σ_p d_p · m_p ≤ N                          # 总卡数
-     Σ_p A_kp = 1, ∀k                           # 每条序列恰好分给一个 group
-```
+用 $C$ 表示 makespan，优化问题为
+
+$$
+\begin{aligned}
+\min\quad &C\\
+\mathrm{s.t.}\quad
+&\operatorname{Time}(\{s_k,A_{kp}\};d_p)\le C,&&\forall p,\\
+&\operatorname{Memory}(\{s_k,A_{kp}\};d_p)\le E,&&\forall p,\\
+&\sum_p d_pm_p\le N,\\
+&\sum_p A_{kp}=1,&&\forall k.
+\end{aligned}
+$$
+
+前两项是 group 的时间与单卡容量约束；后两项限制总 GPU 数，并要求每条序列只分配到一个 group。
 
 其中的 cost model 是异构 group 收益的真正来源：计算项按 $(1/d_p)\sum(\alpha_1 s_k^2 + \alpha_2 s_k)$ 建模，二次项和线性项分开；通信项按 $(1/(d_p v_p))\sum \alpha_3 s_k$ 建模，$v_p$ 是 group 内部的实测带宽——正是这个带宽参数把节点内 NVLink 和跨节点 IB 区分开来，让 solver 能算出「把短序列塞进机内小 group」到底省多少时间。这个 MILP 用 SCIP 求解，单次 5–15 秒，通过「每个 GPU 节点跑一个 solver 服务、与训练流水线式 overlap」藏进训练时间。实验在 GPT-7B/13B/30B、192K/384K context 上进行，相对 Megatron-LM 最高加速 1.98 倍；消融显示 batch 内异构 group 相对「每 batch 自适应的同质策略」仍有最高 1.42 倍的独立收益——说明「异构」本身是有价值的，而不只是「自适应」。
 

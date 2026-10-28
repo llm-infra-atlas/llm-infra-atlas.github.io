@@ -16,10 +16,14 @@ DeepGEMM 的 README 把这一设计点写得很明确（[[deepgemm:README.md#L80
 
 也就是说，MoE 的 expert GEMM 形如：
 
-```
-fc1:  Y_i = X_i @ W1^T        X_i: [n_i, H]   W1: [I, H]   Y_i: [n_i, I]
-                              （各 expert 的 n_i 不同，但 H, I 固定）
-```
+第 $i$ 个 expert 的第一层为
+
+$$
+Y_i=X_iW_{1,i}^{\top},\qquad
+X_i\in\mathbb R^{n_i\times H},\quad W_{1,i}\in\mathbb R^{I\times H},\quad Y_i\in\mathbb R^{n_i\times I}.
+$$
+
+各 expert 的 $n_i$ 不同，$H,I$ 相同。
 
 把所有 expert 的 $X_i$ 沿 $M$（token）维拼接起来，得到一个大矩阵 $X: [\sum_i n_i, H]$，权重为 $W: [E_{\text{local}}, I, H]$。grouped GEMM 用**一个 tile scheduler 扫过整个 $M$ 维**，每个 M-tile 根据它落在哪个 group（即哪个 expert）选取对应的 $W_i$。$N$、$K$ 固定保证了 tile 形状一致，scheduler 也因此简单。
 
@@ -161,12 +165,17 @@ flowchart LR
 
 一个 grouped linear $Y = X W^{\top}$ 的反向包含两个梯度，**它们分别使用不同的 grouped 模式**，这是本篇最需要记住的一点。
 
-```
-forward:   Y_i = X_i @ W_i^T            X_i:[n_i,K]  W_i:[N,K]  Y_i:[n_i,N]
+设 $X_i\in\mathbb R^{n_i\times K}$、$W_i\in\mathbb R^{N\times K}$，则
 
-dgrad:     dX_i = dY_i @ W_i            → 还是「M 维(n_i)变、N/K 固定」 = m-grouped
-wgrad:     dW_i = dY_i^T @ X_i          → 「K 维(n_i)变、M(N) N(K) 固定」 = k-grouped
-```
+$$
+\begin{aligned}
+Y_i&=X_iW_i^\top,\\
+\nabla_{X_i}\mathcal L&=(\nabla_{Y_i}\mathcal L)W_i,\\
+\nabla_{W_i}\mathcal L&=(\nabla_{Y_i}\mathcal L)^\top X_i.
+\end{aligned}
+$$
+
+forward 与 dgrad 的可变 $n_i$ 是输出行数，对应 m-grouped；wgrad 的可变 $n_i$ 是 reduction dimension，对应 k-grouped。
 
 ### 5.1 dgrad：m-grouped
 

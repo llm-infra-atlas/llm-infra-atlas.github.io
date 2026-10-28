@@ -1,0 +1,61 @@
+[
+  {
+    "file": "active_memory_timeline.png",
+    "title": "Active Memory Timeline：峰值点选分配栈",
+    "source": "https://docs.pytorch.org/docs/2.9/torch_cuda_memory.html",
+    "image_url": "https://docs.pytorch.org/docs/2.9/_images/active_memory_timeline.png",
+    "retrieved": null,
+    "sha256": "163d6d1ae4ae67e4cd98a03bdbefbfd37399f478ff0008eadc91af664aff5e5d",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/torch/06_caching_allocator.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "allocator_state_history.png",
+    "title": "Allocator State History：segment 切成 block",
+    "source": "https://docs.pytorch.org/docs/2.9/torch_cuda_memory.html",
+    "image_url": "https://docs.pytorch.org/docs/2.9/_images/allocator_state_history.png",
+    "retrieved": null,
+    "sha256": "f14edfe988f4973c94a8b1f3d338a386d8c99aa19e0bb6285ef439eaa2238fdb",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/torch/06_caching_allocator.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "nvidia_vmm_figure6.png",
+    "title": "cudaMalloc 估大再缩：必须另开一块 + memcpy",
+    "source": "https://developer.nvidia.com/blog/introducing-low-level-gpu-virtual-memory-management/",
+    "image_url": "https://developer.nvidia.com/blog/wp-content/uploads/2020/04/cumemmap_figure6-625x467.png",
+    "retrieved": null,
+    "sha256": "3970b26a38647eaa6927a3f7d37485bd593649816bd627c3a5d8c86d5fca95c8",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "figure_from_caption": "6",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.000305
+    },
+    "references": [
+      "docs/torch/06_caching_allocator.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  }
+]

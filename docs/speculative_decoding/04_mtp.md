@@ -28,12 +28,15 @@ MTP 首先是一种训练设计：让每个位置同时（或串行）预测未�
 
 架构（论文 §2）：
 
-```
-z_t = f_s(x_{≤t})                 # 共享 trunk，只算一次
-对 k = 1..n:
-    h_t^{(k)} = f_{h_k}(z_t)      # 独立 transformer layer 当 head
-    p(t_{t+k} | x_{≤t}) = softmax(f_u(h_t^{(k)}))   # 共享 unembed
-```
+共享 trunk 只计算一次，各 head 对应不同的未来偏移：
+
+$$
+z_t=f_s(x_{\le t}),\qquad
+h_t^{(k)}=f_{h_k}(z_t),\qquad
+p(x_{t+k}\mid x_{\le t})=\operatorname{softmax}(f_u(h_t^{(k)})),\quad k=1,\ldots,n.
+$$
+
+$f_u$ 是共享的 unembedding，$f_{h_k}$ 是各 head 的独立 Transformer 层。
 
 Loss 是 n 个位置的 CE 之和，各 head 条件独立——$t_{t+2}$ 的 head 看不到 $t_{t+1}$ 的采样结果。这与 Medusa 同源：Medusa 冻结骨干、事后添加 head；Gloeckle 从预训练起就联合训练 trunk。
 

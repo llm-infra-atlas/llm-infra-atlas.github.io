@@ -8,7 +8,7 @@
 
 ---
 
-## 1. kernel trick：唯一的约束是非负
+## 1. 可分解的相似度
 
 把 attention 写成广义形式（原文 Eq. 3）：
 
@@ -16,19 +16,19 @@ $$
 V'_i = \frac{\sum_j \mathrm{sim}(Q_i, K_j)\, V_j}{\sum_j \mathrm{sim}(Q_i, K_j)}
 $$
 
-当 $\mathrm{sim}(q, k) = \exp(q^{\top} k / \sqrt{D})$ 时就是 softmax attention。对 $\mathrm{sim}$ 的唯一约束是它非负（否则归一化会出问题），因此任何非负核 $k(x, y): \mathbb{R}^{2 \times F} \to \mathbb{R}_{+}$ 都是合法的（$D$ 是 key/query 维、$F$ 是核的输入特征维，均为原文记号）。给定特征映射 $\phi$，取 $\mathrm{sim}(q, k) = \phi(q)^{\top} \phi(k)$（Eq. 4）：
+当 $\mathrm{sim}(q, k) = \exp(q^{\top} k / \sqrt{D})$ 时就是 softmax attention。若要把权重解释成概率，需要相似度非负且每行分母严格大于零；若还要做到线性复杂度，则需要可高效计算的有限维分解。仅有非负性并不足够。给定特征映射 $\phi$，取 $\mathrm{sim}(q, k) = \phi(q)^{\top} \phi(k)$（Eq. 4）：
 
 $$
-V'_i = \frac{\phi(Q_i)^{\top} \sum_j \phi(K_j) V_j^{\top}}{\phi(Q_i)^{\top} \sum_j \phi(K_j)}
+V'_i = \frac{\left[\sum_j \phi(K_j) V_j^{\top}\right]^{\top}\phi(Q_i)}{\phi(Q_i)^{\top} \sum_j \phi(K_j)}
 $$
 
-关键的一步只有一处（Eq. 5–6）：利用结合律重排计算顺序。
+关键的一步只有一处（Eq. 5–6）：利用结合律重排计算顺序。下面按 token 行堆叠特征，即矩阵的第 $i$ 行是列向量 $\phi(Q_i)$ 的转置；等式展示分子，归一化分母另外计算。
 
 $$
 \underbrace{(\phi(Q)\, \phi(K)^{\top})\, V}_{\text{compute } [N, N] \text{ first}} \;\Longleftrightarrow\; \underbrace{\phi(Q)\, (\phi(K)^{\top}\, V)}_{\text{compute } [C, d_v] \text{ first, independent of } N}
 $$
 
-左式必须物化 $N \times N$ 的矩阵；右式先把 $K$ 和 $V$ 缩并成一个 $C \times d_v$ 的小矩阵（$C$ 是 $\phi$ 的特征维，value 维 $M$ 以下统一写作 $d_v$）。从 $O(N^2)$ 降到 $O(N)$ 的全部变化就在这一步。
+左式按常规顺序会计算 $N \times N$ 的 pairwise 权重（也可用 tiling 避免完整物化）；右式先把 $K$ 和 $V$ 缩并成一个 $C \times d_v$ 的小矩阵（$C$ 是 $\phi$ 的特征维，value 维 $M$ 以下统一写作 $d_v$）。从 $O(N^2)$ 降到 $O(N)$ 的全部变化就在这一步。
 
 复杂度（原文 §3.2.1）：
 
@@ -41,7 +41,19 @@ $$
 
 原文选用 `elu` 而非 `relu`（Eq. 7）：`relu` 在 $x < 0$ 时梯度为 0，而 $\mathrm{elu}(x) + 1$ 处处可导且保持非负。
 
-> 现代实现（GLA / GDN / KDA）不再使用 $\phi$，也不使用归一化项。它们直接用 $q, k$ 本身（配 L2 归一化），并在输出侧接 RMSNorm。原因见 §4：归一化项 $1 / (\phi(q)^{\top} z)$ 在长序列下会趋近 0、数值不稳定，而 RMSNorm 更省心也更有效。因此 $\phi$ 在今天只有历史意义，但结合律重排这个核心始终没有变。
+GLA / GDN / KDA 等递推架构通常直接使用投影得到的 Q/K，并在输出侧使用 normalization/gating；具体是否 L2 normalize 取决于模型。它们与保留正特征映射、显式分母的 normalized linear attention 是不同模型选择，不能把 feature map 一概视为过时。
+
+### 为什么不能直接交换 softmax 的乘法顺序
+
+矩阵乘法有结合律，但逐行 softmax 是非线性变换，一般有
+
+$$
+\operatorname{softmax}(QK^\top)V\ne Q(K^\top V).
+$$
+
+指数 dot-product kernel 对任意实数输入没有固定有限维的精确特征表示。因此有两条不同路线：选择如 ELU+1 的其他 feature map，重新训练一个 linear Transformer；或用随机特征近似原来的 softmax kernel，例如 [Performer](https://arxiv.org/abs/2009.14794)。前者改变相似度定义，后者引入近似误差。FlashAttention 则保持原定义，通过 IO 优化加速，三者不能混称为同一种「线性化」。
+
+对不带 causal mask 的情形，若 $\Phi_Q,\Phi_K\in\mathbb R^{N\times r}$，attention 分子矩阵的秩至多为 $r$；左乘一个非奇异行归一化对角矩阵也不提高秩。但 causal mask 与矩阵逐元素相乘之后，整个下三角矩阵可能满秩，不能继续声称「causal linear attention 的全矩阵秩至多 r」。它仍然能递推，原因是每一条前缀边界只需传递固定大小的充分统计量。
 
 ## 2. linear attention 就是 RNN
 
@@ -50,24 +62,22 @@ $$
 $$
 \begin{aligned}
 S_i &= \sum_{j \le i} \phi(K_j) V_j^{\top} \in \mathbb{R}^{C \times d_v}, & Z_i &= \sum_{j \le i} \phi(K_j) \in \mathbb{R}^{C} \\
-V'_i &= \phi(Q_i)^{\top} S_i \,/\, (\phi(Q_i)^{\top} Z_i)
+V'_i &= S_i^{\top}\phi(Q_i) \,/\, (\phi(Q_i)^{\top} Z_i)
 \end{aligned}
 $$
 
-前缀和可以增量维护，由此得到完整的 RNN 形式（Eq. 16–20，原文逐字）：
+前缀和可以增量维护，由此得到完整的 RNN 形式（对应 Eq. 16–20，改写为本章的列向量布局）：
 
 $$
 \begin{aligned}
 s_0 &= 0,\quad z_0 = 0 \\
-s_i &= s_{i-1} + \phi(x_i W_K)\, (x_i W_V)^{\top} & &\text{attention memory},\ s \in \mathbb{R}^{C \times d_v} \\
-z_i &= z_{i-1} + \phi(x_i W_K) & &\text{normalizer memory},\ z \in \mathbb{R}^{C} \\
-y_i &= f_l\big( \phi(x_i W_Q)^{\top} s_i \,/\, (\phi(x_i W_Q)^{\top} z_i) + x_i \big)
+s_i &= s_{i-1} + \phi(W_Kx_i)\, (W_Vx_i)^{\top} & &\text{attention memory},\ s \in \mathbb{R}^{C \times d_v} \\
+z_i &= z_{i-1} + \phi(W_Kx_i) & &\text{normalizer memory},\ z \in \mathbb{R}^{C} \\
+y_i &= f_l\big( s_i^{\top}\phi(W_Qx_i) \,/\, (\phi(W_Qx_i)^{\top} z_i) + x_i \big)
 \end{aligned}
 $$
 
-这里的状态是 $O(1)$ 的，与序列长度完全无关。原文的这句话值得记住：
-
-> "any transformer layer with causal masking can be written as a model that, given an input, modifies an internal state and then predicts an output, namely a **Recurrent Neural Network**. Note that, in contrast to Universal Transformers, we consider the recurrence with respect to **time** and not depth."
+这里的状态相对于序列长度是常数，但具体有 feature_dim × value_dim 个元素。模型仍有非线性的 projection、gate 与 FFN；linear 指 attention 随序列长度的计算增长方式，以及给定 Q/K 后对状态的线性更新，不是整层网络为线性函数。
 
 用本章的记号（去掉 $\phi$ 和归一化项，即现代形态）：
 
@@ -80,23 +90,33 @@ $$
 
 这个 $S_t$ 就是所谓的「fast weight」：一个在推理时被在线更新的线性层。这个视角是 [`08`](./08_linear_delta_rule.md) 的全部基础。
 
-### 反向的前缀/后缀和结构
+### 写入、查询与容量
 
-朴素实现要存所有 $S_i$，内存放大 $\max(D, d_v)$ 倍。原文 Eq. 13–15 给出前缀和形式：
+展开 $o_t=S_t^\top q_t$ 可以看到，每次写入 $k_jv_j^\top$ 后，未来 query 用 $k_j^\top q_t$ 作为读取该 value 的系数。若 key 正交且归一，每个 key 对应独立方向；若两个 key 重合，朴素累加会把两个 value 叠在同一方向，无法单靠当前 query 决定应当取哪一次写入。这解释了为什么后续需要 decay 与 delta rule，而不仅是把状态维度做大。
+
+以两个相同单位 key 写入 $v_1,v_2$ 为例，状态为 $k(v_1+v_2)^\top$，用 $q=k$ 读取的是 $v_1+v_2$。normalized 版本会相应平均；二者都不自动实现「用新值替换旧值」。
+
+### 反向的前缀与后缀
+
+对这里的无分母递推，令 $g_t=\nabla_{o_t}\mathcal L$，定义从位置 $t$ 向后的 query-gradient 累积
 
 $$
-\begin{aligned}
-\nabla_{\phi(Q_i)} L &= \nabla_{\bar{V}_i} L \cdot \Big( \sum_{j \le i} \phi(K_j) V_j^{\top} \Big)^{\top} \\
-\nabla_{\phi(K_i)} L &= \Big( \sum_{j \ge i} \phi(Q_j) (\nabla_{\bar{V}_j} L)^{\top} \Big)\, V_i \\
-\nabla_{V_i} L &= \Big( \sum_{j \ge i} \phi(Q_j) (\nabla_{\bar{V}_j} L)^{\top} \Big)^{\top} \phi(K_i)
-\end{aligned}
+R_t=\sum_{j=t}^{N}q_jg_j^\top\in\mathbb R^{d_k\times d_v}.
 $$
 
-第一行对应 $Q$ 的梯度，是前缀和；后两行对应 $K$ / $V$ 的梯度，是后缀和。前向是前缀和，反向是后缀和——这个对称性在所有 chunkwise kernel 的 backward 里都能看到（`fla` 里就是 `chunk_bwd_kernel_dh` 的 `for i_t in range(NT-1, -1, -1)`，见 [06 · Flash Linear Attention](../fa/06_flash_linear_attention.md) §7）。这与 [01 · IO-awareness、online softmax 与 tiling](../fa/01_io_awareness_online_softmax.md) §5 中 FA backward「固定 KV 块、循环 Q 块」的方向反转是同一件事。
+则
+
+$$
+\nabla_{q_t}\mathcal L=S_tg_t,\qquad
+\nabla_{k_t}\mathcal L=R_tv_t,\qquad
+\nabla_{v_t}\mathcal L=R_t^\top k_t.
+$$
+
+q 的梯度需要前缀状态，k/v 的梯度需要后缀状态；分别做正向和反向扫描即可。带分母时，还需对 normalizer state $z_t$ 求导，不能漏掉它。训练时若为方便 autograd 保存每一步的矩阵状态，内存仍会增长为 $O(Nd_kd_v)$；固定大小的 decode state 不等于训练 activation 为常数。chunk checkpoint 与重算可降低这个代价。
 
 ## 3. 三种计算形式：数学等价，效率不同
 
-同一个递归有三种算法，它们给出逐位相同的结果（下面每一对都在 `float64` 下验证过）。
+同一个递归有三种算法，它们在实数算术下等价；浮点实现的求和顺序不同，数值应在容差内接近，不能要求逐位相同。
 
 ### 3.1 Parallel（二次）
 
@@ -129,13 +149,17 @@ def la_recurrent(q, k, v, scale):
     return o
 ```
 
-复杂度为 $O(Nd^2)$ FLOPs、$O(d^2)$ 内存。它的 FLOPs 最少，但训练时最慢。GLA 论文 §3.2 说得很直白：
+复杂度为 $O(Nd^2)$ FLOPs、$O(d^2)$ 内存。它避免平方工作量，但逐 token 执行通常难以发挥训练吞吐。GLA 论文 §3.2 说得很直白：
 
 > "while the recurrent form generally has the **lowest total FLOPs** among the three forms, **this does not translate to actual wall-time efficiency**"
 
 原因有两个。第一，$S = S \cdot \alpha + k v^{\top}$ 是 elementwise 的外积累加，无法使用 tensor core（A100 上半精度 matmul 在 tensor core 上比在 CUDA core 上快约 16 倍）。第二，朴素实现要把每步的 2D hidden state 写入 HBM，"resulting in high I/O cost"。
 
 ### 3.3 Chunkwise：现代实现采用的形式
+
+![GLA 的 chunkwise 与二级分块](assets/arxiv/2312.06635_gla_chunkwise.png)
+
+图源：[GLA Fig. 1](https://arxiv.org/abs/2312.06635)。橙色状态连接相邻 chunk，蓝色区域中的 token 可以并行计算。原图还包含门控情况下的二级分块；本节先推导不带门控的最简单情形，[下一篇](./07_linear_decay_gating.md)再解释为什么需要第二级。
 
 这一节是本章的重点。把序列切成 $N / C$ 个 chunk，用 $S_{[i]}$ 表示处理完前 $i$ 个 chunk 后的状态，$Q_{[i]} \in \mathbb{R}^{C \times d}$ 表示第 $i$ 个 chunk 的 query 块。
 
@@ -182,7 +206,7 @@ $$
 \end{aligned}
 $$
 
-当 $N > d$ 时总复杂度小于 parallel 的 $O(N^2 d)$。$C$ 可以看作一个插值参数：$C = N$ 时恢复 parallel form，$C = 1$ 时恢复 recurrent form。实践中取 $C = 64$——既是 16 的倍数（对 tensor core 友好），$C^2 = 4096$ 又放得进 SRAM。
+$C+d$ 相对于 $N$ 足够小时，渐近工作量才明显低于 parallel；实际还要考虑算子效率。$C$ 可以看作一个插值参数：$C = N$ 时恢复 parallel form，$C = 1$ 时恢复 recurrent form。实践中取 $C = 64$——既是 16 的倍数（对 tensor core 友好），$C^2 = 4096$ 又放得进 SRAM。
 
 chunkwise 能同时获得两种形式各自的好处：绝大部分计算是三个 $C \times C$ / $C \times d$ / $d \times d$ 的 matmul（可以使用 tensor core），而状态只在 chunk 边界上串行推进（$N / C$ 次而非 $N$ 次）。
 
@@ -196,7 +220,7 @@ chunkwise 能同时获得两种形式各自的好处：绝大部分计算是三�
 | **Recurrent** | $S_t = S_{t-1} + k_t v_t^{\top}$ | $O(Nd^2)$ | 无 | ✗ | **decode**（`fla` 的 `fused_recurrent_*`） |
 | **Chunkwise** | 见上 | $O(NCd + Nd^2)$ | chunk 间可并行 | ✓ | **训练 + prefill**（`fla` 的 `chunk_*`） |
 
-`fla` 的公开 API 就是按这个划分的，layer 在运行时切换（[[fla:fla/layers/kda.py#L212]]）：训练走 `chunk`，短序列推理走 `fused_recurrent`。
+`fla` 的公开 API 就是按这个划分的，layer 在运行时切换（[[fla:fla/layers/kda.py#L211-L218]]）：开启 autograd 时强制走 `chunk`；关闭梯度、处于 eval 模式且 `q_len ≤ 64` 时走 `fused_recurrent`，其余情况使用配置的模式。因此仅调用 `eval()`，并不足以切换到短序列推理路径。
 
 ### 3.4 FlashLinearAttention：materialization 两种策略
 
@@ -268,9 +292,11 @@ $$
 
 ### (3) 没有锐化：attention dilution
 
-softmax 的 `exp` 提供输入相关的锐化，让 query 能把权重集中到少数 key 上。$\phi(q)^{\top} \phi(k)$ 是有界的多项式相似度，权重被摊平；随 $t$ 增大，$o_t = \sum_{j \le t} (q_t^{\top} k_j)\, v_j$ 中每一项的相对权重被稀释。归一化项 $1 / (\phi(q)^{\top} z)$ 在长序列下还可能趋近 0、数值不稳定。
+softmax 的指数映射可以放大相对 logit 差异，使 query 的权重集中到少数 key。有限维 feature map 是否能产生同样尖锐的选择，取决于映射、尺度和训练；$\phi(q)^\top\phi(k)$ 并不普遍是有界多项式，不能仅凭「linear」就作这种判断。
 
-因此现代实现（GLA/GDN/KDA）全部丢弃归一化项，改用输出端 per-head RMSNorm。这也是 §1 那个提醒的来源。
+在简单的非负 feature map 下，如果大量历史 key 都与当前 query 有相近的正相似度，分母会随历史增长，单个相关 value 的归一化权重可能下降。这是 attention dilution 的一种来源。分母变大本身不构成数值错误，因为分子也可能同阶增长；真正需要检查的是中间累积范围、有效精度，以及相关信号是否被其他写入淹没。
+
+GLA/GDN/KDA 等模型采用无显式概率分母的递推，并在输出侧做 normalization/gating。它们改变了状态与读出定义；正特征映射加分母仍是另一类有效的 linear attention 设计。
 
 ### (4) finite-state capacity
 

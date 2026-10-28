@@ -1,0 +1,131 @@
+[
+  {
+    "file": "arxiv/2205.14135_flashattn_banner.png",
+    "title": "FlashAttention 的存储层次与分块计算",
+    "source": "https://arxiv.org/abs/2205.14135",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "231c4bfa5459b4789c1814e206a6ab9bf3efd609ead20a564169db9aabff2b3f",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2205.14135",
+    "figure_from_caption": "1",
+    "references": [
+      "docs/attention/fa/01_io_awareness_online_softmax.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2307.08691_fa2_parallel.png",
+    "title": "FlashAttention-2 parallelization over sequence-length blocks",
+    "source": "https://arxiv.org/abs/2307.08691",
+    "image_url": "https://arxiv.org/html/2307.08691v1/figs/flashattention_fwd_bwd_parallel.png",
+    "retrieved": null,
+    "sha256": "ef1ddefa53f21572378b139c7bb1059c04fb0528438cfd01d9e2b023890d2269",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2307.08691",
+    "figure_from_caption": "2",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [
+      "docs/attention/fa/02_fa2_parallelism.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2307.08691_flash2_partitioning.png",
+    "title": "2307.08691_flash2_partitioning",
+    "source": "https://arxiv.org/abs/2307.08691",
+    "image_url": "https://arxiv.org/html/2307.08691v1/figs/flash2_partitioning.png",
+    "retrieved": null,
+    "sha256": "b444cda9f8e0907da0e20c29b4c3e992ec86c070a14746382599213fc2ae6412",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "filename_paper_id",
+    "arxiv_id": "2307.08691",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2307.08691_flash_partitioning.png",
+    "title": "2307.08691_flash_partitioning",
+    "source": "https://arxiv.org/abs/2307.08691",
+    "image_url": "https://arxiv.org/html/2307.08691v1/figs/flash_partitioning.png",
+    "retrieved": null,
+    "sha256": "3a46bd503b19419b8cd8954e6fe0be6ad2aef0a3d885339616ee865839f533ad",
+    "modification": "none (upstream bytes match)",
+    "recorded": "2026-10-28",
+    "provenance": "filename_paper_id",
+    "arxiv_id": "2307.08691",
+    "verification": {
+      "method": "sha256",
+      "checked": "2026-10-28"
+    },
+    "references": [],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.11089_nsa_kernel.png",
+    "title": "NSA kernel：Grid Loop 按 GQA 组遍历 query，Inner Loop 顺序走过选中的稀疏 KV 块。绿色在 SRAM，蓝色在 HBM",
+    "source": "https://arxiv.org/abs/2502.11089",
+    "image_url": "https://arxiv.org/html/2502.11089v2/fig3.png",
+    "retrieved": null,
+    "sha256": "cbf8d232d23f50c1d0c35550c47f5c74eb546ec3ae508bd68af735312da6cd35",
+    "modification": "与上游图缩放后比对一致；历史缩放或编码转换步骤未留存。",
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.11089",
+    "figure_from_caption": "3",
+    "verification": {
+      "method": "resampled_image_comparison",
+      "checked": "2026-10-28",
+      "mean_absolute_error": 0.004273
+    },
+    "references": [
+      "docs/attention/fa/05_flash_sparse_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。"
+  },
+  {
+    "file": "arxiv/2502.13189_moba_flashattn.png",
+    "title": "MoBA：mean-pool 打分 → TopK → Index Select → Varlen Flash-Attention",
+    "source": "https://arxiv.org/abs/2502.13189",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "1a52cac50dc4c2d74d7c62dd6ffc1525e45ee3757d97b94c5e246faa49086187",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2502.13189",
+    "references": [
+      "docs/attention/fa/05_flash_sparse_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  },
+  {
+    "file": "arxiv/2512.02556_dsa_arch.png",
+    "title": "DSA：lightning indexer + Top-k Selector 挂在 MQA-mode MLA 之下",
+    "source": "https://arxiv.org/abs/2512.02556",
+    "image_url": null,
+    "retrieved": null,
+    "sha256": "3f1506aa1af848d0fcbceab7b1d2f381f8e643a8943c93a92b4c7399f02c94b6",
+    "modification": null,
+    "recorded": "2026-10-28",
+    "provenance": "document_caption",
+    "arxiv_id": "2512.02556",
+    "figure_from_caption": "2",
+    "references": [
+      "docs/attention/fa/05_flash_sparse_attention.md"
+    ],
+    "notes": "原始下载时间未留存；recorded 为本次来源补录日期。 历史裁剪、缩放或格式转换情况未确认。 已定位来源页面；原图直链未确认。"
+  }
+]
